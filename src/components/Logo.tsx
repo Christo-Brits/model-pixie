@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Cube } from "lucide-react";
+import { Box3d } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -18,7 +18,7 @@ export const Logo = ({ size = "md", className }: LogoProps) => {
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <div className="relative">
-        <Cube 
+        <Box3d 
           className={cn(
             "animate-pulse-soft text-pixie-purple", 
             sizeClasses[size]

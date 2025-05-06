@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Box, Cube, User } from "lucide-react";
+import { Box3d, Box, User } from "lucide-react";
 
 interface ModelItemProps {
   icon: React.ElementType;
@@ -32,7 +32,7 @@ export const ModelShowcase = () => {
       
       {/* Floating 3D model thumbnails */}
       <ModelItem 
-        icon={Cube} 
+        icon={Box3d} 
         position="top-4 left-8" 
         delay="animate-float" 
         color="text-pixie-purple"
