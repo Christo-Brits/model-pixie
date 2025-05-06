@@ -64,11 +64,12 @@ export const getEnvironment = (): Environment => {
     return 'production';
   }
   
-  // In Edge Functions, use the ENVIRONMENT variable if set
-  if (typeof Deno !== 'undefined') {
-    const env = Deno.env.get('ENVIRONMENT');
+  // In Edge Functions or other server environments, use environment variables
+  // Since we can't directly access Deno in browser context, we need to handle this differently
+  if (typeof process !== 'undefined' && process.env) {
+    const env = process.env.ENVIRONMENT;
     if (env === 'development' || env === 'staging') {
-      return env;
+      return env as Environment;
     }
     return 'production'; // Default to production for safety
   }
