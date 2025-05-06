@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -127,8 +128,8 @@ export const checkJobStatus = async (jobId: string) => {
     const { data, error } = await supabase.functions.invoke(
       'job-status',
       {
-        method: 'GET',
-        path: `/${jobId}`
+        body: { jobId },
+        method: 'GET'
       }
     );
 
@@ -173,14 +174,34 @@ export const updateJobStatus = async (jobId: string, status: string) => {
 
 // Function to save feedback for a job
 export const saveFeedback = async (jobId: string, rating: number, comment?: string) => {
-  const { error } = await supabase
-    .from('feedback')
-    .insert({
-      job_id: jobId,
-      rating,
-      comment
-    });
+  try {
+    // Try to use the Edge Function for feedback submission
+    const { data, error } = await supabase.functions.invoke(
+      'feedback',
+      {
+        body: { jobId, rating, comment },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to submit feedback');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error submitting feedback:', error);
     
-  if (error) throw error;
-  return true;
+    // Fallback: Direct database insert
+    const { error: dbError } = await supabase
+      .from('feedback')
+      .insert({
+        job_id: jobId,
+        rating,
+        comment
+      });
+      
+    if (dbError) throw dbError;
+    return true;
+  }
 };

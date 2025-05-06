@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.job-status]
 verify_jwt = false
+
+[functions.feedback]
+verify_jwt = false
