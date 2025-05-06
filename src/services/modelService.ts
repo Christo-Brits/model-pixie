@@ -205,3 +205,66 @@ export const saveFeedback = async (jobId: string, rating: number, comment?: stri
     return true;
   }
 };
+
+/**
+ * Creates a polling mechanism to check job status at regular intervals
+ * Returns a function to cancel the polling
+ */
+export const pollJobStatus = (jobId: string, callback: (status: any) => void, interval = 5000) => {
+  let isPolling = true;
+  
+  const poll = async () => {
+    if (!isPolling) return;
+    
+    try {
+      const status = await checkJobStatus(jobId);
+      callback(status);
+      
+      // If job is in a terminal state, stop polling
+      if (['completed', 'error', 'failed', 'cancelled'].includes(status.status)) {
+        isPolling = false;
+      } else {
+        // Continue polling
+        setTimeout(poll, interval);
+      }
+    } catch (error) {
+      console.error('Error polling job status:', error);
+      // Continue polling even on error, but with a slightly longer interval
+      if (isPolling) {
+        setTimeout(poll, interval * 2);
+      }
+    }
+  };
+  
+  // Start polling
+  poll();
+  
+  // Return function to cancel polling
+  return () => {
+    isPolling = false;
+  };
+};
+
+// Function to get human-readable status description
+export const getStatusDescription = (status: string) => {
+  switch (status) {
+    case 'queued':
+      return 'Waiting in queue';
+    case 'processing':
+      return 'Processing your request';
+    case 'rendering':
+      return 'Rendering the model';
+    case 'refining':
+      return 'Refining the image';
+    case 'completed':
+      return 'Processing complete';
+    case 'error':
+      return 'An error occurred';
+    case 'failed':
+      return 'Processing failed';
+    case 'cancelled':
+      return 'Processing cancelled';
+    default:
+      return 'Status unknown';
+  }
+};

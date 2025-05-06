@@ -17,7 +17,7 @@ The following CORS headers are applied to all responses:
 
 - `Access-Control-Allow-Origin`: Dynamically set based on the request origin and allowed origins list
 - `Access-Control-Allow-Methods`: GET, POST, OPTIONS, PUT, DELETE
-- `Access-Control-Allow-Headers`: authorization, x-client-info, apikey, content-type
+- `Access-Control-Allow-Headers`: authorization, x-client-info, apikey, content-type, x-webhook-token
 - `Access-Control-Max-Age`: 86400 (24 hours)
 
 ## Security Headers
@@ -37,6 +37,7 @@ Rate limiting is implemented to prevent abuse:
 - General endpoints: 60-120 requests per minute (varies by endpoint)
 - Feedback endpoint: 30 requests per minute (stricter)
 - Authentication endpoints: 10 requests per minute (strictest)
+- N8n webhook callbacks: 180 requests per minute (higher limit for processing callbacks)
 
 Rate limits are enforced based on client IP address. In production, a more persistent solution would be implemented.
 
@@ -55,6 +56,15 @@ Authentication is handled through Supabase Authentication:
 - JWTs are validated on protected endpoints
 - User IDs are extracted from authentication tokens
 - Edge functions verify JWT tokens automatically (configured in config.toml)
+- N8n webhooks use a separate token-based authentication mechanism
+
+## N8n Webhook Security
+
+N8n webhook callbacks are authenticated using:
+
+- Secret token authentication via the `x-webhook-token` header
+- Rate limiting to prevent abuse
+- IP-based filtering (optional configuration)
 
 ## Input Validation
 
@@ -89,6 +99,7 @@ Security events are logged for monitoring and auditing:
 - Rate limit violations
 - Unusual request patterns
 - Feedback submissions
+- N8n webhook call results
 
 ## Configuration
 

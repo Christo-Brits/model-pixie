@@ -16,3 +16,6 @@ verify_jwt = false
 [functions.feedback]
 verify_jwt = false
 
+[functions.n8n-callback]
+verify_jwt = false
+
