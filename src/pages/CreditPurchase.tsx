@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CreditCard, PayPal, Apple } from 'lucide-react';
+import { CreditCard, Apple, Wallet } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -122,7 +122,7 @@ const CreditPurchase = () => {
             
             <div className={`border rounded-md px-4 py-3 flex flex-col items-center gap-1 cursor-pointer transition-colors ${paymentMethod === 'paypal' ? 'bg-primary/5 border-primary' : 'hover:border-muted-foreground'}`}>
               <RadioGroupItem value="paypal" id="paypal" className="sr-only" />
-              <PayPal className="h-6 w-6" />
+              <Wallet className="h-6 w-6" />
               <Label htmlFor="paypal" className="cursor-pointer text-sm">PayPal</Label>
             </div>
             
