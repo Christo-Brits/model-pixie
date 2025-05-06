@@ -29,18 +29,38 @@ export const fetchUserJobs = async (userId: string) => {
 
 // Function to create a new job
 export const createJob = async (userId: string, prompt: string) => {
-  const { data, error } = await supabase
-    .from('jobs')
-    .insert({
-      user_id: userId,
-      prompt: prompt,
-      status: 'pending'
-    })
-    .select()
-    .single();
+  try {
+    // First try to use the Edge Function for job creation
+    const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
+      'create-job',
+      {
+        body: { prompt, userId },
+      }
+    );
+
+    if (!edgeFunctionError && edgeFunctionData?.job) {
+      return edgeFunctionData.job;
+    }
+
+    console.warn('Edge function failed or not available, falling back to direct database insert:', edgeFunctionError);
     
-  if (error) throw error;
-  return data;
+    // Fallback: Direct database insert
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        user_id: userId,
+        prompt: prompt,
+        status: 'pending'
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating job:', error);
+    throw error;
+  }
 };
 
 // Function to fetch a specific job
