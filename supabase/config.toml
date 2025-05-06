@@ -3,3 +3,6 @@ project_id = "pvtrmpaxhbvhvdiojqkd"
 
 [functions.create-job]
 verify_jwt = false
+
+[functions.refine-image]
+verify_jwt = false

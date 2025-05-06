@@ -63,6 +63,29 @@ export const createJob = async (userId: string, prompt: string) => {
   }
 };
 
+// Function to refine an image/model
+export const refineModel = async (jobId: string, editInstructions: string) => {
+  try {
+    // Try to use the Edge Function for refinement
+    const { data, error } = await supabase.functions.invoke(
+      'refine-image',
+      {
+        body: { jobId, editInstructions },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to refine image');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error refining image:', error);
+    throw error;
+  }
+};
+
 // Function to fetch a specific job
 export const fetchJob = async (jobId: string) => {
   const { data, error } = await supabase
