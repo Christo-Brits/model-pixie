@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Plus, Cuboid, Book } from 'lucide-react';
+import { Home, Plus, Cuboid, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,7 @@ export const BottomNavigation = () => {
     { icon: Home, label: 'Home', path: '/' },
     { icon: Plus, label: 'Create', path: '/create' },
     { icon: Cuboid, label: 'Models', path: '/models' },
-    { icon: Book, label: 'Learn', path: '/learn' },
+    { icon: Users, label: 'Community', path: '/community' },
   ];
 
   return (
