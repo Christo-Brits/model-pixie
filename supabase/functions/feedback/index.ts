@@ -1,16 +1,29 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { 
+  handleOptionsRequest, 
+  getAllHeaders,
+  checkRateLimit,
+  getRateLimitResponse,
+  extractUserIdFromRequest
+} from "../_shared/security.ts";
+import { isValidUUID, sanitizeText } from "../_shared/validators.ts";
 
 serve(async (req) => {
+  // Get the client IP for rate limiting
+  const clientIP = req.headers.get('CF-Connecting-IP') || 
+                   req.headers.get('X-Forwarded-For')?.split(',')[0] ||
+                   '127.0.0.1';
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleOptionsRequest(req);
+  }
+
+  // Apply stricter rate limiting for feedback endpoint
+  if (!checkRateLimit(clientIP, 30)) { // 30 requests per minute
+    return getRateLimitResponse();
   }
 
   try {
@@ -18,7 +31,7 @@ serve(async (req) => {
     if (req.method !== 'POST') {
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 405, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -29,16 +42,15 @@ serve(async (req) => {
     if (!jobId) {
       return new Response(
         JSON.stringify({ error: 'jobId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(jobId)) {
+    // Validate UUID format using the imported validator
+    if (!isValidUUID(jobId)) {
       return new Response(
         JSON.stringify({ error: 'Invalid jobId format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -46,7 +58,7 @@ serve(async (req) => {
     if (rating === undefined) {
       return new Response(
         JSON.stringify({ error: 'Rating is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -55,16 +67,12 @@ serve(async (req) => {
     if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
       return new Response(
         JSON.stringify({ error: 'Rating must be a number between 1 and 5' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
-    // Sanitize comment (if provided)
-    let sanitizedComment = null;
-    if (comment !== undefined) {
-      // Basic sanitization - trim and limit length
-      sanitizedComment = String(comment).trim().substring(0, 1000);
-    }
+    // Sanitize comment using the imported sanitizer
+    const sanitizedComment = comment !== undefined ? sanitizeText(comment) : null;
 
     // Create Supabase client
     const supabaseClient = createClient(
@@ -83,14 +91,14 @@ serve(async (req) => {
       console.error("Error verifying job:", jobError);
       return new Response(
         JSON.stringify({ error: 'Database error occurred while verifying job' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
     if (!jobData) {
       return new Response(
         JSON.stringify({ error: 'Job not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -105,9 +113,13 @@ serve(async (req) => {
       console.error("Error checking existing feedback:", checkError);
       return new Response(
         JSON.stringify({ error: 'Database error occurred while checking existing feedback' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
+
+    // Extract additional context that might be useful for audit
+    const userId = extractUserIdFromRequest(req);
+    const timestamp = new Date().toISOString();
 
     if (existingFeedback) {
       // If feedback already exists, update it instead
@@ -123,7 +135,7 @@ serve(async (req) => {
         console.error("Error updating feedback:", updateError);
         return new Response(
           JSON.stringify({ error: 'Failed to update feedback' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
         );
       }
 
@@ -133,7 +145,7 @@ serve(async (req) => {
           message: 'Feedback updated successfully',
           updated: true
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -150,16 +162,19 @@ serve(async (req) => {
       console.error("Error inserting feedback:", insertError);
       return new Response(
         JSON.stringify({ error: 'Failed to save feedback' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log feedback submission for auditing purposes
+    console.log(`Feedback submitted for job ${jobId}: rating=${numericRating}, userId=${userId || 'anonymous'}, time=${timestamp}`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
         message: 'Feedback submitted successfully'
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
@@ -167,7 +182,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
     );
   }
 });

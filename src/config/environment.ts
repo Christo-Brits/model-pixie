@@ -30,6 +30,10 @@ export interface AppConfig {
   // Feature flags
   enableCaching: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+  
+  // Security settings
+  corsAllowedOrigins: string[];
+  apiRateLimit: number;
 }
 
 /**
@@ -37,14 +41,18 @@ export interface AppConfig {
  * Only includes publicly safe values.
  */
 export const getClientConfig = (): Partial<AppConfig> => {
+  const environment = getEnvironment();
+  
   return {
-    environment: getEnvironment(),
-    isDevelopment: getEnvironment() === 'development',
-    isStaging: getEnvironment() === 'staging',
-    isProduction: getEnvironment() === 'production',
+    environment,
+    isDevelopment: environment === 'development',
+    isStaging: environment === 'staging',
+    isProduction: environment === 'production',
     supabaseUrl: "https://pvtrmpaxhbvhvdiojqkd.supabase.co",
     supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w",
-    logLevel: getEnvironment() === 'production' ? 'warn' : 'debug',
+    logLevel: environment === 'production' ? 'warn' : 'debug',
+    corsAllowedOrigins: getCorsAllowedOrigins(environment),
+    apiRateLimit: getRateLimitForEnvironment(environment),
   };
 };
 
@@ -87,3 +95,49 @@ export const requireConfig = (value: string | undefined, name: string): string =
   }
   return value;
 };
+
+/**
+ * Returns appropriate CORS settings based on environment
+ */
+function getCorsAllowedOrigins(environment: Environment): string[] {
+  // Base origins that are always allowed
+  const origins = [
+    "https://modelpixie.ai",
+    "https://app.modelpixie.ai",
+    "https://www.modelpixie.ai"
+  ];
+  
+  // Add environment-specific origins
+  if (environment === 'production') {
+    // Only secure origins in production
+  } else if (environment === 'staging') {
+    origins.push("https://staging.modelpixie.ai");
+  } else {
+    // Add development origins
+    origins.push(
+      "http://localhost:8080",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://lovable.dev",
+      "https://app.lovable.dev"
+    );
+  }
+  
+  return origins;
+}
+
+/**
+ * Returns appropriate rate limits based on environment
+ */
+function getRateLimitForEnvironment(environment: Environment): number {
+  switch (environment) {
+    case 'development':
+      return 300; // Higher limits for development
+    case 'staging':
+      return 180; // Medium limits for staging
+    case 'production':
+      return 60;  // Stricter limits for production
+    default:
+      return 60;
+  }
+}

@@ -1,16 +1,28 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { 
+  handleOptionsRequest, 
+  getAllHeaders,
+  checkRateLimit,
+  getRateLimitResponse
+} from "../_shared/security.ts";
 
 serve(async (req) => {
+  // Get the client IP for rate limiting
+  // In Supabase Edge Functions, this might come from CF-Connecting-IP
+  const clientIP = req.headers.get('CF-Connecting-IP') || 
+                   req.headers.get('X-Forwarded-For')?.split(',')[0] ||
+                   '127.0.0.1';
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleOptionsRequest(req);
+  }
+
+  // Apply rate limiting
+  if (!checkRateLimit(clientIP, 120)) { // 120 requests per minute
+    return getRateLimitResponse();
   }
 
   try {
@@ -18,7 +30,7 @@ serve(async (req) => {
     if (req.method !== 'GET') {
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 405, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -32,7 +44,7 @@ serve(async (req) => {
     if (!jobId || !uuidRegex.test(jobId)) {
       return new Response(
         JSON.stringify({ error: 'Invalid job ID format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -56,20 +68,20 @@ serve(async (req) => {
       if (dbError.code === 'PGRST116') {
         return new Response(
           JSON.stringify({ error: 'Job not found' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 404, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
         );
       }
       
       return new Response(
         JSON.stringify({ error: 'Database error occurred' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
     if (!jobData) {
       return new Response(
         JSON.stringify({ error: 'Job not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -84,7 +96,7 @@ serve(async (req) => {
       { 
         status: 200, 
         headers: { 
-          ...corsHeaders, 
+          ...getAllHeaders(req.headers.get('origin') || ''), 
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate' // Prevent caching for real-time status
         } 
@@ -96,7 +108,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
     );
   }
 });
