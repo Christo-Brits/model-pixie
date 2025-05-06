@@ -29,12 +29,12 @@ export const WelcomeButtons = ({ className }: WelcomeButtonsProps) => {
         </Button>
       </Link>
       <div className="text-center mt-4">
-        <a 
-          href="#" 
+        <Link 
+          to="/" 
           className="text-sm text-muted-foreground hover:text-pixie-purple transition-colors"
         >
           Continue as Guest
-        </a>
+        </Link>
       </div>
     </div>
   );
