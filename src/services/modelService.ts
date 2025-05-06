@@ -1,237 +1,81 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
-export interface Job {
-  id: string;
+// Type for Job data
+export type Job = {
+  id?: string;
+  job_id?: string;
   user_id: string;
   prompt: string;
-  image_url?: string | null;
-  model_url?: string | null;
-  status?: string | null;
-  iterations?: number | null;
-  job_id?: string | null;
-  created_at: string;
+  status?: string;
+  image_url?: string;
+  model_url?: string;
+  iterations?: number;
+  created_at?: string;
 }
 
-export interface Feedback {
-  id: string;
-  job_id: string;
-  rating?: number | null;
-  comment?: string | null;
-  created_at: string;
-}
+// Function to fetch a user's jobs
+export const fetchUserJobs = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+  return data;
+};
 
-export const modelService = {
-  // Jobs CRUD operations
-  async createJob(prompt: string): Promise<Job | null> {
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .insert({ prompt, status: 'pending' })
-        .select()
-        .single();
+// Function to create a new job
+export const createJob = async (userId: string, prompt: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .insert({
+      user_id: userId,
+      prompt: prompt,
+      status: 'pending'
+    })
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return data;
+};
 
-      if (error) {
-        toast({
-          title: "Error creating job",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error("Error creating job:", error);
-      return null;
-    }
-  },
+// Function to fetch a specific job
+export const fetchJob = async (jobId: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', jobId)
+    .single();
+    
+  if (error) throw error;
+  return data;
+};
 
-  async getJobs(): Promise<Job[]> {
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+// Function to update job status
+export const updateJobStatus = async (jobId: string, status: string) => {
+  const { error } = await supabase
+    .from('jobs')
+    .update({ status })
+    .eq('id', jobId);
+    
+  if (error) throw error;
+  return true;
+};
 
-      if (error) {
-        toast({
-          title: "Error fetching jobs",
-          description: error.message,
-          variant: "destructive",
-        });
-        return [];
-      }
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
-      return [];
-    }
-  },
-
-  async getJob(id: string): Promise<Job | null> {
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error fetching job",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error(`Error fetching job ${id}:`, error);
-      return null;
-    }
-  },
-
-  async updateJob(id: string, updates: Partial<Job>): Promise<Job | null> {
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error updating job",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error(`Error updating job ${id}:`, error);
-      return null;
-    }
-  },
-
-  async deleteJob(id: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('jobs')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        toast({
-          title: "Error deleting job",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error(`Error deleting job ${id}:`, error);
-      return false;
-    }
-  },
-
-  // Feedback CRUD operations
-  async createFeedback(jobId: string, rating?: number, comment?: string): Promise<Feedback | null> {
-    try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .insert({
-          job_id: jobId,
-          rating,
-          comment
-        })
-        .select()
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error submitting feedback",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-      return null;
-    }
-  },
-
-  async getFeedbackForJob(jobId: string): Promise<Feedback | null> {
-    try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .select('*')
-        .eq('job_id', jobId)
-        .maybeSingle();
-
-      if (error) {
-        toast({
-          title: "Error fetching feedback",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error(`Error fetching feedback for job ${jobId}:`, error);
-      return null;
-    }
-  },
-
-  async updateFeedback(id: string, updates: Partial<Feedback>): Promise<Feedback | null> {
-    try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error updating feedback",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error(`Error updating feedback ${id}:`, error);
-      return null;
-    }
-  },
-
-  async deleteFeedback(id: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('feedback')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        toast({
-          title: "Error deleting feedback",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error(`Error deleting feedback ${id}:`, error);
-      return false;
-    }
-  }
+// Function to save feedback for a job
+export const saveFeedback = async (jobId: string, rating: number, comment?: string) => {
+  const { error } = await supabase
+    .from('feedback')
+    .insert({
+      job_id: jobId,
+      rating,
+      comment
+    });
+    
+  if (error) throw error;
+  return true;
 };

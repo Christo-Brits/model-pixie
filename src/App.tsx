@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,36 +21,39 @@ import CreditPurchase from "./pages/CreditPurchase";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
-const queryClient = new QueryClient();
+const App = () => {
+  // Create a new QueryClient instance inside the component
+  const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/welcome" element={<Index />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/create" element={<Create />} />
-            <Route path="/generating" element={<ModelGenerating />} />
-            <Route path="/preview" element={<ModelPreview />} />
-            <Route path="/model/:id" element={<ModelDetail />} />
-            <Route path="/models" element={<Models />} />
-            <Route path="/community" element={<Community />} />
-            <Route path="/learn" element={<Learn />} />
-            <Route path="/credits" element={<CreditPurchase />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/welcome" element={<Index />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/create" element={<Create />} />
+              <Route path="/generating" element={<ModelGenerating />} />
+              <Route path="/preview" element={<ModelPreview />} />
+              <Route path="/model/:id" element={<ModelDetail />} />
+              <Route path="/models" element={<Models />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/learn" element={<Learn />} />
+              <Route path="/credits" element={<CreditPurchase />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
