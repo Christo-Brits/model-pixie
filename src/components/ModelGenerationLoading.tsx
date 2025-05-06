@@ -10,6 +10,7 @@ interface ModelGenerationLoadingProps {
   estimatedTime: string;
   creditUsage: number;
   onCancel: () => void;
+  statusMessage?: string;  // Added statusMessage as optional prop
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export const ModelGenerationLoading = ({
   estimatedTime = "45 sec",
   creditUsage = 1,
   onCancel,
+  statusMessage,  // Added statusMessage to destructured props
   className,
 }: ModelGenerationLoadingProps) => {
   return (
@@ -63,7 +65,9 @@ export const ModelGenerationLoading = ({
       
       {/* Text and Progress */}
       <h1 className="text-2xl font-bold mb-1 text-center">Generating your model</h1>
-      <p className="text-lg text-muted-foreground mb-6 text-center">Creating magic...</p>
+      <p className="text-lg text-muted-foreground mb-6 text-center">
+        {statusMessage || "Creating magic..."}
+      </p>
       
       <div className="w-full max-w-md mb-6 space-y-2">
         <Progress value={progress} className="h-2" />
