@@ -9,6 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          job_id: string
+          rating: number | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          rating?: number | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          iterations: number | null
+          job_id: string | null
+          model_url: string | null
+          prompt: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          iterations?: number | null
+          job_id?: string | null
+          model_url?: string | null
+          prompt: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          iterations?: number | null
+          job_id?: string | null
+          model_url?: string | null
+          prompt?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       Jobs: {
         Row: {
           created_at: string | null
