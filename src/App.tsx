@@ -12,6 +12,7 @@ import Create from "./pages/Create";
 import Models from "./pages/Models";
 import Community from "./pages/Community";
 import Learn from "./pages/Learn";
+import ModelGenerating from "./pages/ModelGenerating";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/register" element={<Register />} />
           <Route path="/create" element={<Create />} />
+          <Route path="/generating" element={<ModelGenerating />} />
           <Route path="/models" element={<Models />} />
           <Route path="/community" element={<Community />} />
           <Route path="/learn" element={<Learn />} />

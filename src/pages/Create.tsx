@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Text, PenLine, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 const Create = () => {
+  const navigate = useNavigate();
   const [inputMode, setInputMode] = useState<"text" | "sketch">("text");
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+
+  const handleGenerate = () => {
+    navigate('/generating');
+  };
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
@@ -83,7 +89,10 @@ const Create = () => {
             This will use <span className="font-medium text-foreground">1 credit</span>
           </div>
           
-          <Button className="gap-2 pixie-gradient text-white shadow-lg py-6">
+          <Button 
+            className="gap-2 pixie-gradient text-white shadow-lg py-6"
+            onClick={handleGenerate}
+          >
             <Sparkles className="h-5 w-5" />
             Generate
           </Button>
