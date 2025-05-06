@@ -2,7 +2,7 @@
 import React from 'react';
 import { TopBar } from '@/components/TopBar';
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { Search, Book, Layers, Bulb, Cube, Scissors, Wrench } from 'lucide-react';
+import { Search, Book, Layers, Lightbulb, Cuboid, Scissors, Wrench } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible } from '@/components/ui/collapsible';
 
@@ -10,8 +10,8 @@ const Learn = () => {
   const categories = [
     { id: 1, name: "Basics", icon: Book, color: "bg-blue-100" },
     { id: 2, name: "FDM", icon: Layers, color: "bg-green-100" },
-    { id: 3, name: "Tips", icon: Bulb, color: "bg-yellow-100" },
-    { id: 4, name: "Models", icon: Cube, color: "bg-purple-100" },
+    { id: 3, name: "Tips", icon: Lightbulb, color: "bg-yellow-100" },
+    { id: 4, name: "Models", icon: Cuboid, color: "bg-purple-100" },
     { id: 5, name: "Slicing", icon: Scissors, color: "bg-red-100" },
     { id: 6, name: "Post", icon: Wrench, color: "bg-indigo-100" },
   ];
