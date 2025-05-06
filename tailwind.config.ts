@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,12 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				pixie: {
+					purple: '#8B5CF6',
+					lightPurple: '#A78BFA',
+					blue: '#60A5FA',
+					pink: '#F472B6',
 				}
 			},
 			borderRadius: {
@@ -84,11 +91,28 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' },
+				},
+				'rotate-slow': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' },
+				},
+				'pulse-soft': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'float': 'float 6s ease-in-out infinite',
+				'float-delay': 'float 7s ease-in-out 0.5s infinite',
+				'float-delay-2': 'float 5s ease-in-out 1s infinite',
+				'rotate-slow': 'rotate-slow 12s linear infinite',
+				'pulse-soft': 'pulse-soft 3s ease-in-out infinite',
 			}
 		}
 	},
