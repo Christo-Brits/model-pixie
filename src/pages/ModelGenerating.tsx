@@ -1,11 +1,24 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModelGenerationLoading } from '@/components/ModelGenerationLoading';
 import { toast } from '@/hooks/use-toast';
 
 const ModelGenerating = () => {
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Simulate model generation completion after 3 seconds
+    const timer = setTimeout(() => {
+      toast({
+        title: 'Model generated successfully!',
+        description: 'Your 3D model is ready to preview.',
+      });
+      navigate('/preview');
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [navigate]);
   
   const handleCancel = () => {
     toast({
