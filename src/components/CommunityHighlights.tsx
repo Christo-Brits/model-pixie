@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Cube } from 'lucide-react';
+import { Cuboid } from 'lucide-react';
 
 const highlights = [
   {
@@ -29,7 +29,7 @@ export const CommunityHighlights = () => {
           <CardContent className="p-0">
             <div className="aspect-video relative bg-muted/30 flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-br from-pixie-blue/20 via-pixie-purple/10 to-pixie-pink/20" />
-              <Cube className="h-12 w-12 text-pixie-purple/70" />
+              <Cuboid className="h-12 w-12 text-pixie-purple/70" />
             </div>
           </CardContent>
           <CardFooter className="p-3 flex justify-between">

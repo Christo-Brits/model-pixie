@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { Home, Plus, Cube, Book } from 'lucide-react';
+import { Home, Plus, Cuboid, Book } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/', active: true },
   { icon: Plus, label: 'Create', path: '/create', active: false },
-  { icon: Cube, label: 'Models', path: '/models', active: false },
+  { icon: Cuboid, label: 'Models', path: '/models', active: false },
   { icon: Book, label: 'Learn', path: '/learn', active: false },
 ];
 

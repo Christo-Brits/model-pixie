@@ -8,7 +8,7 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import { Card, CardContent } from '@/components/ui/card';
-import { Cube } from 'lucide-react';
+import { Cuboid } from 'lucide-react';
 
 const mockModels = [
   { id: 1, name: "Robot Figurine", thumbnail: "robot" },
@@ -31,7 +31,7 @@ export const ModelCarousel = () => {
               <CardContent className="p-0">
                 <div className="aspect-square relative bg-muted/50 flex items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-pixie-purple/20 to-pixie-blue/20 rounded-md" />
-                  <Cube className="h-10 w-10 text-pixie-purple/60" />
+                  <Cuboid className="h-10 w-10 text-pixie-purple/60" />
                 </div>
                 <div className="p-2 text-center">
                   <p className="text-sm font-medium truncate">{model.name}</p>
