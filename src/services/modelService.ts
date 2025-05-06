@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -119,6 +118,46 @@ export const fetchJob = async (jobId: string) => {
     
   if (error) throw error;
   return data;
+};
+
+// Function to check job status
+export const checkJobStatus = async (jobId: string) => {
+  try {
+    // Try to use the Edge Function for job status
+    const { data, error } = await supabase.functions.invoke(
+      'job-status',
+      {
+        method: 'GET',
+        path: `/${jobId}`
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to check job status');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error checking job status:', error);
+    
+    // Fallback: Direct database query
+    console.log('Falling back to direct database query for job status');
+    const { data, error: dbError } = await supabase
+      .from('jobs')
+      .select('status, image_url, model_url, iterations')
+      .eq('id', jobId)
+      .single();
+      
+    if (dbError) throw dbError;
+    
+    return {
+      status: data?.status || 'unknown',
+      imageUrl: data?.image_url,
+      modelUrl: data?.model_url,
+      iterations: data?.iterations || 0
+    };
+  }
 };
 
 // Function to update job status
