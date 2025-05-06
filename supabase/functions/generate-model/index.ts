@@ -1,11 +1,9 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import { corsHeaders, getEdgeFunctionConfig } from "../_shared/config.ts";
+import { isValidURL } from "../_shared/validators.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -14,140 +12,111 @@ serve(async (req) => {
   }
 
   try {
-    // Check if request method is POST
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse request body
-    const requestData = await req.json();
-    console.log("Received generate model request:", requestData);
-
-    // Validate input data
-    const { jobId, imageUrl } = requestData;
+    // Load configuration
+    const config = getEdgeFunctionConfig();
     
-    if (!jobId || typeof jobId !== 'string') {
+    // Parse the request body
+    const { jobId, imageUrl } = await req.json();
+    
+    // Input validation
+    if (!jobId) {
       return new Response(
-        JSON.stringify({ error: 'jobId is required and must be a string' }),
+        JSON.stringify({ error: 'jobId is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(jobId)) {
+    
+    if (!imageUrl) {
       return new Response(
-        JSON.stringify({ error: 'Invalid UUID format for jobId' }),
+        JSON.stringify({ error: 'imageUrl is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    if (!imageUrl || typeof imageUrl !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'imageUrl is required and must be a string' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    
     // Validate URL format
-    try {
-      new URL(imageUrl);
-    } catch (e) {
+    if (!isValidURL(imageUrl)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid URL format for imageUrl' }),
+        JSON.stringify({ error: 'Invalid imageUrl format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    // Initialize Supabase client using configuration
+    const supabase = createClient(
+      config.supabaseUrl,
+      config.supabaseServiceKey
     );
-
-    // Retrieve the job from the database to check if it exists
-    const { data: jobData, error: fetchError } = await supabaseClient
+    
+    // Update job status to 'processing'
+    const { data: job, error: updateError } = await supabase
       .from('jobs')
-      .select('*')
+      .update({ status: 'processing' })
       .eq('id', jobId)
+      .select('*')
       .single();
-
-    if (fetchError || !jobData) {
-      console.error("Database fetch error:", fetchError);
+    
+    if (updateError) {
+      console.error('Error updating job status:', updateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to update job status', details: updateError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!job) {
       return new Response(
         JSON.stringify({ error: 'Job not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log(`Job ${jobId} status transitioning from ${jobData.status} to processing`);
-
-    // Update job status in the database
-    const { error: updateError } = await supabaseClient
-      .from('jobs')
-      .update({ 
-        status: 'processing',
-        image_url: imageUrl
-      })
-      .eq('id', jobId);
-
-    if (updateError) {
-      console.error("Database update error:", updateError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to update job status' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Forward payload to n8n webhook
+    
+    // Log the job status transition
+    console.log(`Job ${jobId} status updated to 'processing'`);
+    
+    // Forward the request to the n8n webhook
     try {
-      const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://your-n8n-domain/webhook/modelpixie-shape';
-      
-      const n8nResponse = await fetch(n8nWebhookUrl, {
+      const n8nResponse = await fetch(config.n8nModelGenerationUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          jobId: jobId,
-          imageUrl: imageUrl
+          jobId,
+          imageUrl,
+          timestamp: new Date().toISOString(),
         }),
       });
-
+      
       if (!n8nResponse.ok) {
-        console.error("n8n webhook error:", await n8nResponse.text());
-        // We don't want to fail the request if the n8n webhook fails
-        // Just log it and continue
+        console.error(`N8n webhook returned status: ${n8nResponse.status}`);
+        // We don't fail the request here, as the job is already in 'processing' state
+        // The job status will be updated by the n8n workflow or status check endpoint
       } else {
-        console.log("Successfully forwarded to n8n webhook");
+        console.log(`Successfully forwarded request to n8n webhook for job ${jobId}`);
       }
     } catch (webhookError) {
-      console.error("Error forwarding to n8n webhook:", webhookError);
-      // We still don't want to fail the request if the n8n webhook fails
-      // Just log it and continue
+      console.error('Error calling n8n webhook:', webhookError);
+      // We don't fail the request here, as the job is already in 'processing' state
+      // The job status will be updated by the n8n workflow or status check endpoint
     }
-
+    
     // Return success response
     return new Response(
-      JSON.stringify({
-        message: 'Model generation request processed successfully',
+      JSON.stringify({ 
+        success: true, 
+        message: 'Model generation started',
         job: {
-          id: jobId,
-          status: 'processing',
-          image_url: imageUrl
+          id: job.id,
+          status: job.status,
         }
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
-    console.error("Unexpected error in generate-model function:", error);
+    console.error('Error in generate-model function:', error);
     
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
