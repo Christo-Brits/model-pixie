@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface WelcomeButtonsProps {
   className?: string;
@@ -10,12 +11,14 @@ interface WelcomeButtonsProps {
 export const WelcomeButtons = ({ className }: WelcomeButtonsProps) => {
   return (
     <div className={cn("flex flex-col space-y-4 w-full", className)}>
-      <Button 
-        className="bg-pixie-purple hover:bg-pixie-purple/90 text-white font-medium py-6"
-        size="lg"
-      >
-        Sign Up
-      </Button>
+      <Link to="/register" className="w-full">
+        <Button 
+          className="bg-pixie-purple hover:bg-pixie-purple/90 text-white font-medium py-6 w-full"
+          size="lg"
+        >
+          Sign Up
+        </Button>
+      </Link>
       <Button 
         variant="outline" 
         className="border-pixie-purple text-pixie-purple hover:bg-pixie-purple/10 font-medium py-6"
