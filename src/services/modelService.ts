@@ -86,6 +86,29 @@ export const refineModel = async (jobId: string, editInstructions: string) => {
   }
 };
 
+// Function to generate a model from an image
+export const generateModel = async (jobId: string, imageUrl: string) => {
+  try {
+    // Try to use the Edge Function for model generation
+    const { data, error } = await supabase.functions.invoke(
+      'generate-model',
+      {
+        body: { jobId, imageUrl },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to generate model');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error generating model:', error);
+    throw error;
+  }
+};
+
 // Function to fetch a specific job
 export const fetchJob = async (jobId: string) => {
   const { data, error } = await supabase
