@@ -14,6 +14,7 @@ import Community from "./pages/Community";
 import Learn from "./pages/Learn";
 import ModelGenerating from "./pages/ModelGenerating";
 import ModelPreview from "./pages/ModelPreview";
+import ModelDetail from "./pages/ModelDetail";
 import CreditPurchase from "./pages/CreditPurchase";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/create" element={<Create />} />
           <Route path="/generating" element={<ModelGenerating />} />
           <Route path="/preview" element={<ModelPreview />} />
+          <Route path="/model/:id" element={<ModelDetail />} />
           <Route path="/models" element={<Models />} />
           <Route path="/community" element={<Community />} />
           <Route path="/learn" element={<Learn />} />

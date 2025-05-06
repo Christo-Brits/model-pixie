@@ -11,64 +11,68 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface ModelCardProps {
   name: string;
   status: 'completed' | 'processing';
   type: string;
+  id?: string;
 }
 
-const ModelCard: React.FC<ModelCardProps> = ({ name, status, type }) => {
+const ModelCard: React.FC<ModelCardProps> = ({ name, status, type, id = "1" }) => {
   return (
-    <div className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all">
-      <div className="aspect-square relative bg-muted flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-br from-pixie-purple/10 to-pixie-blue/10" />
-        
-        {/* Status indicator */}
-        <div className="absolute top-2 right-2 z-10">
-          {status === 'completed' ? (
-            <div className="bg-green-500 rounded-full p-1">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-          ) : (
-            <div className="bg-amber-500 rounded-full p-1">
-              <RotateCcw className="h-3 w-3 text-white animate-spin-slow" />
-            </div>
-          )}
+    <Link to={`/model/${id}`} className="block">
+      <div className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all">
+        <div className="aspect-square relative bg-muted flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-pixie-purple/10 to-pixie-blue/10" />
+          
+          {/* Status indicator */}
+          <div className="absolute top-2 right-2 z-10">
+            {status === 'completed' ? (
+              <div className="bg-green-500 rounded-full p-1">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+            ) : (
+              <div className="bg-amber-500 rounded-full p-1">
+                <RotateCcw className="h-3 w-3 text-white animate-spin-slow" />
+              </div>
+            )}
+          </div>
+          
+          {/* Model icon - using different styling based on type */}
+          <div 
+            className={cn(
+              "h-12 w-12", 
+              type === 'figurine' && "text-pixie-purple/70",
+              type === 'practical' && "text-pixie-blue/70",
+              type === 'decorative' && "text-pixie-pink/70"
+            )}
+          >
+            {/* Different visual representation based on model type */}
+            {type === 'figurine' && <div className="h-full w-full rounded-lg bg-pixie-purple/20 flex items-center justify-center">F</div>}
+            {type === 'practical' && <div className="h-full w-full rounded-lg bg-pixie-blue/20 flex items-center justify-center">P</div>}
+            {type === 'decorative' && <div className="h-full w-full rounded-lg bg-pixie-pink/20 flex items-center justify-center">D</div>}
+          </div>
         </div>
-        
-        {/* Model icon - using different styling based on type */}
-        <div 
-          className={cn(
-            "h-12 w-12", 
-            type === 'figurine' && "text-pixie-purple/70",
-            type === 'practical' && "text-pixie-blue/70",
-            type === 'decorative' && "text-pixie-pink/70"
-          )}
-        >
-          {/* Different visual representation based on model type */}
-          {type === 'figurine' && <div className="h-full w-full rounded-lg bg-pixie-purple/20 flex items-center justify-center">F</div>}
-          {type === 'practical' && <div className="h-full w-full rounded-lg bg-pixie-blue/20 flex items-center justify-center">P</div>}
-          {type === 'decorative' && <div className="h-full w-full rounded-lg bg-pixie-pink/20 flex items-center justify-center">D</div>}
+        <div className="p-2 bg-background">
+          <p className="text-sm font-medium text-center truncate">{name}</p>
         </div>
       </div>
-      <div className="p-2 bg-background">
-        <p className="text-sm font-medium text-center truncate">{name}</p>
-      </div>
-    </div>
+    </Link>
   );
 };
 
 const modelData: ModelCardProps[] = [
-  { name: "Robot Figurine", status: 'completed', type: 'figurine' },
-  { name: "Desk Organizer", status: 'completed', type: 'practical' },
-  { name: "Phone Stand", status: 'processing', type: 'practical' },
-  { name: "Geometric Vase", status: 'completed', type: 'decorative' },
-  { name: "Custom Keychain", status: 'processing', type: 'figurine' },
-  { name: "Decorative Bowl", status: 'completed', type: 'decorative' },
-  { name: "Chess Piece", status: 'completed', type: 'figurine' },
-  { name: "Pen Holder", status: 'completed', type: 'practical' },
-  { name: "Wall Art", status: 'processing', type: 'decorative' },
+  { name: "Dragon Figurine", status: 'completed', type: 'figurine', id: "dragon-1" },
+  { name: "Desk Organizer", status: 'completed', type: 'practical', id: "desk-1" },
+  { name: "Phone Stand", status: 'processing', type: 'practical', id: "phone-1" },
+  { name: "Geometric Vase", status: 'completed', type: 'decorative', id: "vase-1" },
+  { name: "Custom Keychain", status: 'processing', type: 'figurine', id: "keychain-1" },
+  { name: "Decorative Bowl", status: 'completed', type: 'decorative', id: "bowl-1" },
+  { name: "Chess Piece", status: 'completed', type: 'figurine', id: "chess-1" },
+  { name: "Pen Holder", status: 'completed', type: 'practical', id: "pen-1" },
+  { name: "Wall Art", status: 'processing', type: 'decorative', id: "art-1" },
 ];
 
 const Models = () => {
