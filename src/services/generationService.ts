@@ -107,14 +107,22 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
       try {
         // Try to use the direct fetch approach first
         console.log("Attempt direct API call to generate-images edge function");
+        
+        // Get the current session asynchronously (proper way)
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        
+        // Use the public anon key from the URL rather than accessing protected property
+        const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w";
+        
         const response = await fetch(
           'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/generate-images',
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
-              'apikey': supabase.supabaseKey
+              'Authorization': `Bearer ${accessToken}`,
+              'apikey': apiKey
             },
             body: JSON.stringify({ 
               jobId, 
