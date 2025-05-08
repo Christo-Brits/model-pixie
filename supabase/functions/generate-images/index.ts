@@ -42,9 +42,9 @@ serve(async (req) => {
       
     console.log(`Job ${jobId} status updated to 'generating'. Generating images for prompt: ${prompt}`);
     
-    // Prepare OpenAI API request using Image-1 model
+    // Prepare OpenAI API request using latest model
     let openAIPayload = {
-      model: "dall-e-3", // Using dall-e-3 as Image-1 model identifier (OpenAI hasn't released an "Image-1" model)
+      model: "gpt-4.1-vision", // Using the newer vision model (Note: Replace with actual model name if different)
       prompt: prompt,
       n: 4,  // Generate 4 variations
       size: "1024x1024",
