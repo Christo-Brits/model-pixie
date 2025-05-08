@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/hooks/useAuth';
 import Home from '@/pages/Home';
 import Auth from '@/pages/Auth';
 import Register from '@/pages/Register';
@@ -20,25 +21,27 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/create" element={<Create />} />
-        <Route path="/models" element={<Models />} />
-        <Route path="/community" element={<Community />} />
-        <Route path="/learn" element={<Learn />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/generating" element={<ModelGenerating />} />
-        <Route path="/preview" element={<ModelPreview />} />
-        <Route path="/model/:id" element={<ModelDetail />} />
-        <Route path="/credits" element={<CreditPurchase />} />
-        <Route path="/select-image" element={<ImageSelection />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/create" element={<Create />} />
+          <Route path="/models" element={<Models />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/generating" element={<ModelGenerating />} />
+          <Route path="/preview" element={<ModelPreview />} />
+          <Route path="/model/:id" element={<ModelDetail />} />
+          <Route path="/credits" element={<CreditPurchase />} />
+          <Route path="/select-image" element={<ImageSelection />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+      </Router>
+    </AuthProvider>
   );
 }
 
