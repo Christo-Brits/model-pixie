@@ -183,20 +183,35 @@ export const checkModelGenerationStatus = async (jobId: string) => {
     } catch (fallbackError) {
       // If both approaches fail, fallback to checking the job status directly in the database
       console.error('Falling back to database check after edge function failure:', fallbackError);
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('status, model_url, metadata')
-        .eq('id', jobId)
-        .single();
-        
-      if (error) throw error;
       
-      return {
-        success: true,
-        status: data.status,
-        modelUrl: data.model_url,
-        predictionId: data.metadata?.prediction_id
-      };
+      // Key fix: Properly handle the error case when metadata column doesn't exist
+      try {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('status, model_url')
+          .eq('id', jobId)
+          .single();
+          
+        if (error) throw error;
+        
+        // Return a standard response format even when querying directly
+        return {
+          success: true,
+          status: data.status,
+          modelUrl: data.model_url,
+          // Since metadata isn't available in the jobs table, we'll return null for predictionId
+          predictionId: null
+        };
+      } catch (dbError) {
+        console.error('Database query error:', dbError);
+        // Return a fallback response that matches the expected format
+        return {
+          success: false,
+          status: 'error',
+          error: 'Failed to retrieve job status',
+          predictionId: null
+        };
+      }
     }
   } catch (error) {
     console.error('Error checking model status:', error);

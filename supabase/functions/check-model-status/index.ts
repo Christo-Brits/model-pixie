@@ -60,14 +60,23 @@ serve(async (req) => {
     }
     
     // Check if the job has metadata with a prediction ID
-    if (!job.metadata?.prediction_id) {
+    // If metadata doesn't exist, use an alternative approach
+    const metadata = job.metadata || {};
+    const predictionId = metadata.prediction_id;
+    
+    // If no prediction ID is found, provide a simplified response
+    if (!predictionId) {
+      // Return current job status if available
       return new Response(
-        JSON.stringify({ error: 'No prediction ID found for this job', job: job.status }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true, 
+          status: job.status || 'pending',
+          modelUrl: job.model_url,
+          estimatedTimeRemaining: '5-7 minutes'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    const predictionId = job.metadata.prediction_id;
     
     // Initialize Replicate client
     const replicate = new Replicate({

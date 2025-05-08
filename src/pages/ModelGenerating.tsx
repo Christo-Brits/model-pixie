@@ -47,7 +47,7 @@ const ModelGenerating = () => {
             // Set prediction ID for status checking
             if (result.job.predictionId) {
               setPredictionId(result.job.predictionId);
-              setStatusMessage(`Model generation in progress. Estimated time: ${result.job.estimatedTime}`);
+              setStatusMessage(`Model generation in progress. Estimated time: ${result.job.estimatedTime || '5-7 minutes'}`);
             }
             
             // If the job completed immediately (unlikely but possible)
@@ -208,7 +208,8 @@ const ModelGenerating = () => {
       estimatedTime={progress < 80 ? "5-7 min" : "Almost done"}
       creditUsage={1}
       onCancel={handleCancel}
-      statusMessage={hasError ? statusMessage : statusMessage}
+      statusMessage={statusMessage}
+      hasError={hasError}
     />
   );
 };
