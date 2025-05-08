@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TopBar } from '@/components/TopBar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -7,20 +7,57 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Apple, Wallet } from 'lucide-react';
+import { CreditCard, Apple, Wallet, RefreshCw, Check } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useCredits } from '@/hooks/useCredits';
+import { 
+  createCheckoutSession, 
+  handleCheckoutResult, 
+  creditPackages 
+} from '@/services/paymentService';
 
 const CreditPurchase = () => {
   const [selectedPackage, setSelectedPackage] = useState<string>("package2");
   const [paymentMethod, setPaymentMethod] = useState<string>("card");
-  const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  const handlePurchase = () => {
-    toast.success("Purchase successful!", {
-      description: "Credits have been added to your account."
-    });
-    navigate('/');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { credits, loading: creditsLoading, refetchCredits } = useCredits();
+  
+  // Check for checkout success or cancellation
+  useEffect(() => {
+    const checkoutCompleted = handleCheckoutResult(searchParams);
+    if (checkoutCompleted) {
+      refetchCredits();
+    }
+  }, [searchParams]);
+  
+  const handlePurchase = async () => {
+    if (!user) {
+      toast.error("Please sign in to purchase credits", {
+        description: "You must be signed in to complete this purchase."
+      });
+      navigate('/auth');
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      await createCheckoutSession(selectedPackage);
+      // Redirect happens in createCheckoutSession
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      toast.error("Checkout failed", {
+        description: "An error occurred during the checkout process."
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
   return (
@@ -31,82 +68,65 @@ const CreditPurchase = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Buy Credits</h1>
           <p className="text-muted-foreground mt-1">Power your creations with Pixie credits</p>
+          
+          {!creditsLoading && (
+            <div className="mt-2 flex justify-center items-center gap-2">
+              <span className="text-sm font-medium">Current balance: {credits} credits</span>
+              <Button variant="ghost" size="sm" onClick={refetchCredits} className="h-6 w-6 p-0">
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Credit packages */}
         <div className="space-y-4">
           <RadioGroup value={selectedPackage} onValueChange={setSelectedPackage} className="space-y-5">
-            {/* Package 1 */}
-            <label 
-              htmlFor="package1" 
-              className={`block cursor-pointer transition-all ${selectedPackage === "package1" ? "ring-2 ring-primary" : ""}`}
-            >
-              <Card className="relative overflow-hidden">
-                <CardContent className="pt-6 pb-4 flex justify-between items-center">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-lg">1 Credit</h3>
-                    <p className="text-sm text-muted-foreground">Single model creation</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold">$5.00</div>
-                    <div className="text-sm text-muted-foreground">per credit</div>
-                  </div>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <RadioGroupItem value="package1" id="package1" className="mr-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </label>
-            
-            {/* Package 2 */}
-            <label 
-              htmlFor="package2" 
-              className={`block cursor-pointer transition-all ${selectedPackage === "package2" ? "ring-2 ring-primary" : ""}`}
-            >
-              <Card className="relative overflow-hidden bg-gradient-to-r from-background to-primary/5">
-                <div className="absolute top-0 right-0">
-                  <Badge className="m-2 bg-primary text-primary-foreground">POPULAR CHOICE!</Badge>
-                </div>
-                <CardContent className="pt-6 pb-4 flex justify-between items-center">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-lg">5 Credits</h3>
-                    <p className="text-sm text-muted-foreground">Multiple model creations</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold">$20.00</div>
-                    <div className="text-sm text-primary font-medium">$4.00 each</div>
-                  </div>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <RadioGroupItem value="package2" id="package2" className="mr-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </label>
-            
-            {/* Package 3 */}
-            <label 
-              htmlFor="package3" 
-              className={`block cursor-pointer transition-all ${selectedPackage === "package3" ? "ring-2 ring-primary" : ""}`}
-            >
-              <Card className="relative overflow-hidden bg-gradient-to-r from-background to-accent/10">
-                <div className="absolute top-0 right-0">
-                  <Badge className="m-2 bg-accent text-accent-foreground">BEST VALUE!</Badge>
-                </div>
-                <CardContent className="pt-6 pb-4 flex justify-between items-center">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-lg">15 Credits</h3>
-                    <p className="text-sm text-muted-foreground">Studio package</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold">$50.00</div>
-                    <div className="text-sm text-accent font-medium">$3.33 each</div>
-                  </div>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <RadioGroupItem value="package3" id="package3" className="mr-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </label>
+            {creditPackages.map((pkg) => (
+              <label 
+                key={pkg.id}
+                htmlFor={pkg.id} 
+                className={`block cursor-pointer transition-all ${selectedPackage === pkg.id ? "ring-2 ring-primary" : ""}`}
+              >
+                <Card className={`relative overflow-hidden ${
+                  pkg.popular ? "bg-gradient-to-r from-background to-primary/5" : 
+                  pkg.bestValue ? "bg-gradient-to-r from-background to-accent/10" : ""
+                }`}>
+                  {pkg.popular && (
+                    <div className="absolute top-0 right-0">
+                      <Badge className="m-2 bg-primary text-primary-foreground">POPULAR CHOICE!</Badge>
+                    </div>
+                  )}
+                  
+                  {pkg.bestValue && (
+                    <div className="absolute top-0 right-0">
+                      <Badge className="m-2 bg-accent text-accent-foreground">BEST VALUE!</Badge>
+                    </div>
+                  )}
+                  
+                  <CardContent className="pt-6 pb-4 flex justify-between items-center">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-lg">{pkg.credits} Credit{pkg.credits > 1 ? "s" : ""}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {pkg.credits === 1 ? "Single model creation" : 
+                         pkg.credits === 5 ? "Multiple model creations" : "Studio package"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold">${pkg.price.toFixed(2)}</div>
+                      {pkg.credits > 1 && (
+                        <div className={`text-sm ${pkg.popular ? "text-primary" : pkg.bestValue ? "text-accent" : ""} font-medium`}>
+                          ${(pkg.price / pkg.credits).toFixed(2)} each
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      <RadioGroupItem value={pkg.id} id={pkg.id} className="mr-2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </label>
+            ))}
           </RadioGroup>
         </div>
         
@@ -140,8 +160,22 @@ const CreditPurchase = () => {
           <div aria-hidden="true" className="absolute right-0 w-16 h-16 -z-10 bg-accent/10 rounded-full blur-lg opacity-70"></div>
           
           {/* Purchase button */}
-          <Button onClick={handlePurchase} className="w-full py-6" size="lg">
-            Complete Purchase
+          <Button 
+            onClick={handlePurchase} 
+            className="w-full py-6" 
+            size="lg"
+            disabled={isProcessing || !user}
+          >
+            {isProcessing ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : !user ? (
+              "Sign In to Purchase"
+            ) : (
+              "Complete Purchase"
+            )}
           </Button>
           
           <p className="text-xs text-center text-muted-foreground mt-4">
