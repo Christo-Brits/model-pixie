@@ -28,3 +28,9 @@ verify_jwt = true
 
 [functions.add-test-credits]
 verify_jwt = true
+
+[functions.check-model-status]
+verify_jwt = false
+
+[functions.generate-model]
+verify_jwt = false

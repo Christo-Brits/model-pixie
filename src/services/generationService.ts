@@ -28,7 +28,7 @@ export const refineModel = async (jobId: string, editInstructions: string) => {
 export const generateModel = async (jobId: string, imageUrl: string) => {
   try {
     console.log(`Generating 3D model for job ${jobId} with image: ${imageUrl}`);
-    // Use the direct OpenAI integration via Edge Function
+    // Use the direct Replicate integration via Edge Function
     const { data, error } = await supabase.functions.invoke(
       'generate-model',
       {
@@ -45,6 +45,28 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
     return data;
   } catch (error) {
     console.error('Error generating model:', error);
+    throw error;
+  }
+};
+
+// Function to check the status of a model generation job
+export const checkModelGenerationStatus = async (jobId: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      'check-model-status',
+      {
+        body: { jobId },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to check model status');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error checking model status:', error);
     throw error;
   }
 };
