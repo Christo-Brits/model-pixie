@@ -8,19 +8,22 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2, Gift } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { createJob } from '@/services/jobCreationService';
-import { generateImages } from '@/services/generationService';
+import { generateImages, addTestCredits } from '@/services/generationService';
+import { useCredits } from '@/hooks/useCredits';
 
 const Create = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { credits, refetchCredits } = useCredits();
   const [inputMode, setInputMode] = useState<"text" | "sketch">("text");
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAddingCredits, setIsAddingCredits] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -62,6 +65,42 @@ const Create = () => {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleAddTestCredits = async () => {
+    if (!user) {
+      toast({
+        title: 'Please sign in',
+        description: 'You need to be signed in to add test credits',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setIsAddingCredits(true);
+      
+      // Add 10 test credits
+      await addTestCredits(user.id, 10);
+      
+      // Refresh the credits display
+      await refetchCredits();
+      
+      toast({
+        title: 'Test credits added',
+        description: '10 test credits have been added to your account',
+      });
+      
+    } catch (error) {
+      console.error('Error adding test credits:', error);
+      toast({
+        title: 'Failed to add test credits',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsAddingCredits(false);
     }
   };
 
@@ -154,6 +193,30 @@ const Create = () => {
               </>
             )}
           </Button>
+          
+          <div className="mt-4 pt-4 border-t border-dashed border-muted">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={handleAddTestCredits}
+              disabled={isAddingCredits || !user}
+            >
+              {isAddingCredits ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Adding test credits...
+                </>
+              ) : (
+                <>
+                  <Gift className="h-4 w-4" />
+                  Add 10 test credits
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              For testing purposes only
+            </p>
+          </div>
         </div>
       </main>
       

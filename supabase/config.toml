@@ -1,29 +1,30 @@
 
 project_id = "pvtrmpaxhbvhvdiojqkd"
 
-[functions.create-job]
-verify_jwt = true
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
 
-[functions.generate-images]
-verify_jwt = true
+[db]
+port = 54322
 
-[functions.refine-image]
-verify_jwt = true
+[auth]
+enabled = true
+port = 9999
 
-[functions.generate-model]
-verify_jwt = true
+[realtime]
+enabled = true
 
+[storage]
+enabled = true
+
+[analytics]
+enabled = false
+
+[functions]
 [functions.use-refinement-credit]
 verify_jwt = true
 
-[functions.job-status]
-verify_jwt = false
-
-[functions.feedback]
-verify_jwt = false
-
-[functions.n8n-callback]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
+[functions.add-test-credits]
+verify_jwt = true
