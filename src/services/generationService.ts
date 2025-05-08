@@ -184,9 +184,9 @@ export const checkModelGenerationStatus = async (jobId: string) => {
       // If both approaches fail, fallback to checking the job status directly in the database
       console.error('Falling back to database check after edge function failure:', fallbackError);
       
-      // Key fix: Properly handle the error case when metadata column doesn't exist
+      // Fix: Properly handle the error case when metadata column doesn't exist
       try {
-        // First, check if we have metadata column
+        // First, check if we have basic job data
         const { data, error } = await supabase
           .from('jobs')
           .select('status, model_url')
@@ -216,17 +216,20 @@ export const checkModelGenerationStatus = async (jobId: string) => {
         // Try to get metadata in a separate query if needed
         let meshyTaskId = null;
         try {
-          const { data: metadataResult } = await supabase
+          const metadataResult = await supabase
             .from('jobs')
             .select('metadata')
             .eq('id', jobId)
             .single();
             
-          if (metadataResult && metadataResult.metadata) {
-            meshyTaskId = metadataResult.metadata.meshy_task_id;
+          // Fix: Only try to access metadata if the query was successful
+          if (metadataResult && !metadataResult.error && metadataResult.data && metadataResult.data.metadata) {
+            meshyTaskId = metadataResult.data.metadata.meshy_task_id;
+          } else {
+            console.log('Metadata column may not exist or is empty');
           }
         } catch (metadataError) {
-          console.log('Metadata column may not exist, continuing without it');
+          console.log('Error accessing metadata, continuing without it:', metadataError);
         }
         
         // Return a standard response format even when querying directly

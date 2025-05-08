@@ -52,13 +52,10 @@ serve(async (req) => {
       config.supabaseServiceKey
     );
     
-    // Try to update with metadata column if it exists
-    let updateData = { status: 'processing' };
-    
     // Update job status to 'processing'
     const { data: job, error: updateError } = await supabase
       .from('jobs')
-      .update(updateData)
+      .update({ status: 'processing' })
       .eq('id', jobId)
       .select('*')
       .single();
@@ -124,46 +121,68 @@ serve(async (req) => {
         
         console.log(`Meshy AI task initiated with ID: ${taskId}`);
         
-        // Check if metadata column exists by testing if we can update with it
-        let metadata = { 
+        // Create metadata object
+        const metadata = { 
           meshy_task_id: taskId,
           started_at: new Date().toISOString()
         };
         
+        // First try to determine if the metadata column exists
+        let hasMetadataColumn = true;
         try {
-          // Try updating with metadata
-          const { error: taskUpdateError } = await supabase
+          // Test if we can get the metadata column
+          const { data: metadataTest, error: metadataTestError } = await supabase
             .from('jobs')
-            .update({
-              status: 'rendering',
-              metadata: metadata
-            })
-            .eq('id', jobId);
+            .select('metadata')
+            .eq('id', jobId)
+            .limit(1);
             
-          if (taskUpdateError) {
-            // Metadata column might not exist, so try alternate approach
-            console.log('Could not update metadata, falling back to status only update');
-            
-            const { error: fallbackUpdateError } = await supabase
+          if (metadataTestError && metadataTestError.message.includes("column 'metadata' does not exist")) {
+            hasMetadataColumn = false;
+            console.log('Metadata column does not exist, will not try to update it');
+          }
+        } catch (testError) {
+          console.error('Error testing for metadata column:', testError);
+          hasMetadataColumn = false;
+        }
+        
+        try {
+          // Try updating with or without metadata based on column existence
+          if (hasMetadataColumn) {
+            const { error: taskUpdateError } = await supabase
               .from('jobs')
               .update({
-                status: 'rendering'
+                status: 'rendering',
+                metadata: metadata
               })
               .eq('id', jobId);
               
-            if (fallbackUpdateError) {
-              throw new Error(`Failed to update job status: ${fallbackUpdateError.message}`);
+            if (taskUpdateError) {
+              console.error('Error updating job with metadata:', taskUpdateError);
+              // Fall back to status-only update
+              await supabase
+                .from('jobs')
+                .update({ status: 'rendering' })
+                .eq('id', jobId);
             }
+          } else {
+            // Just update the status if metadata column doesn't exist
+            await supabase
+              .from('jobs')
+              .update({ status: 'rendering' })
+              .eq('id', jobId);
           }
         } catch (updateError) {
-          console.error('Error updating job with metadata:', updateError);
-          // Just update the status if metadata update fails
-          await supabase
-            .from('jobs')
-            .update({
-              status: 'rendering'
-            })
-            .eq('id', jobId);
+          console.error('Error updating job:', updateError);
+          // Make sure at least the status is updated
+          try {
+            await supabase
+              .from('jobs')
+              .update({ status: 'rendering' })
+              .eq('id', jobId);
+          } catch (finalError) {
+            console.error('Even status update failed:', finalError);
+          }
         }
         
         // Return response with task ID for status polling

@@ -67,20 +67,24 @@ serve(async (req) => {
     
     // Check if the job has metadata with a Meshy task ID
     // Handle the case where metadata might not exist yet as a column
-    let metadata = {};
     let meshyTaskId = null;
     
     try {
-      if (job.metadata) {
-        metadata = job.metadata;
-        meshyTaskId = metadata.meshy_task_id;
+      // First check if the metadata property exists on the job object
+      if (job && typeof job === 'object' && 'metadata' in job && job.metadata) {
+        // Then check if meshy_task_id exists in the metadata
+        if (typeof job.metadata === 'object' && job.metadata.meshy_task_id) {
+          meshyTaskId = job.metadata.meshy_task_id;
+          console.log(`Found Meshy task ID in metadata: ${meshyTaskId}`);
+        }
       }
     } catch (e) {
-      console.log('Could not access metadata, it may not exist as a column yet');
+      console.log('Could not access metadata, it may not exist as a column yet:', e);
     }
     
     // If no task ID is found, provide a simplified response
     if (!meshyTaskId) {
+      console.log('No Meshy task ID found, returning current job status');
       // Return current job status if available
       return new Response(
         JSON.stringify({ 
