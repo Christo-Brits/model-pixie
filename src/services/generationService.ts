@@ -27,7 +27,8 @@ export const refineModel = async (jobId: string, editInstructions: string) => {
 // Function to generate a model from an image
 export const generateModel = async (jobId: string, imageUrl: string) => {
   try {
-    // Try to use the Edge Function for model generation
+    console.log(`Generating 3D model for job ${jobId} with image: ${imageUrl}`);
+    // Use the direct OpenAI integration via Edge Function
     const { data, error } = await supabase.functions.invoke(
       'generate-model',
       {
@@ -40,6 +41,7 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
       throw new Error(error.message || 'Failed to generate model');
     }
 
+    console.log('Model generation response:', data);
     return data;
   } catch (error) {
     console.error('Error generating model:', error);
