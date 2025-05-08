@@ -63,7 +63,7 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
           const errorText = await response.text();
           try {
             const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.error || `Failed with status ${response.status}`);
+            throw new Error(errorJson.error || errorJson.details || `Failed with status ${response.status}`);
           } catch (e) {
             throw new Error(`Failed with status ${response.status}: ${errorText}`);
           }
@@ -73,8 +73,8 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
         console.log('Model generation response:', data);
         
         // Check for specific error about API key
-        if (data.error && data.error.includes('REPLICATE_API_KEY')) {
-          throw new Error('Replicate API key is not configured in the server. Please contact support.');
+        if (data.error && data.error.includes('MESHY_API_KEY')) {
+          throw new Error('Meshy API key is not configured in the server. Please contact support.');
         }
         
         return data;
@@ -83,11 +83,11 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
         lastError = error;
         retries -= 1;
         
-        // Check if the error is related to the Replicate API key not being configured
-        if (error.message && error.message.includes('REPLICATE_API_KEY')) {
+        // Check if the error is related to the Meshy API key not being configured
+        if (error.message && (error.message.includes('MESHY_API_KEY') || error.message.includes('Meshy API'))) {
           // Don't retry if it's an API key configuration issue
-          console.error('Replicate API key is not configured. Stopping retries.');
-          throw new Error('Replicate API key is not configured in the server. Please contact support.');
+          console.error('Meshy API error. Stopping retries.');
+          throw error;
         }
         
         if (retries > 0) {
@@ -188,7 +188,7 @@ export const checkModelGenerationStatus = async (jobId: string) => {
       try {
         const { data, error } = await supabase
           .from('jobs')
-          .select('status, model_url')
+          .select('status, model_url, metadata')
           .eq('id', jobId)
           .single();
           
@@ -199,8 +199,8 @@ export const checkModelGenerationStatus = async (jobId: string) => {
           success: true,
           status: data.status,
           modelUrl: data.model_url,
-          // Since metadata isn't available in the jobs table, we'll return null for predictionId
-          predictionId: null
+          // Include meshyTaskId if available in metadata
+          meshyTaskId: data.metadata?.meshy_task_id || null
         };
       } catch (dbError) {
         console.error('Database query error:', dbError);
@@ -209,7 +209,7 @@ export const checkModelGenerationStatus = async (jobId: string) => {
           success: false,
           status: 'error',
           error: 'Failed to retrieve job status',
-          predictionId: null
+          meshyTaskId: null
         };
       }
     }

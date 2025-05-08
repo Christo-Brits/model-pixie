@@ -81,82 +81,99 @@ serve(async (req) => {
     try {
       console.log(`Starting 3D model generation using Meshy AI for job ${jobId}`);
       
-      // Call Meshy AI API to initiate 3D model generation
-      const meshyResponse = await fetch('https://api.meshy.ai/v1/image-to-3d', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${meshyApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          generation_type: "mesh",
-          output_format: "stl"
-          // Webhook URL can be added later if we implement it
-        })
-      });
-      
-      if (!meshyResponse.ok) {
-        const errorText = await meshyResponse.text();
-        throw new Error(`Meshy API error: ${meshyResponse.status} - ${errorText}`);
-      }
-      
-      const meshyData = await meshyResponse.json();
-      
-      // We need the taskId for status checking
-      const taskId = meshyData.task_id;
-      
-      if (!taskId) {
-        throw new Error('Meshy API did not return a task_id');
-      }
-      
-      console.log(`Meshy AI task initiated with ID: ${taskId}`);
-      
-      // Update job with Meshy taskId for status tracking
-      const { error: taskUpdateError } = await supabase
-        .from('jobs')
-        .update({
-          status: 'rendering',
-          // Store taskId in job metadata for status polling
-          metadata: { 
-            meshy_task_id: taskId,
-            started_at: new Date().toISOString()
+      // Prepare Meshy API request with proper error handling
+      try {
+        // Call Meshy AI API to initiate 3D model generation
+        const meshyResponse = await fetch('https://api.meshy.ai/v1/image-to-3d', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${meshyApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image_url: imageUrl,
+            generation_type: "mesh",
+            output_format: "stl"
+          })
+        });
+        
+        if (!meshyResponse.ok) {
+          const errorData = await meshyResponse.text();
+          let errorMessage = `Meshy API error: ${meshyResponse.status}`;
+          try {
+            const errorJson = JSON.parse(errorData);
+            errorMessage += ` - ${errorJson.error || errorJson.message || errorData}`;
+          } catch {
+            errorMessage += ` - ${errorData}`;
           }
-        })
-        .eq('id', jobId);
-      
-      if (taskUpdateError) {
-        throw new Error(`Failed to update job with Meshy task ID: ${taskUpdateError.message}`);
-      }
-      
-      // Return response with task ID for status polling
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Model generation started successfully',
-          job: {
-            id: job.id,
+          throw new Error(errorMessage);
+        }
+        
+        const meshyData = await meshyResponse.json();
+        console.log('Meshy API response:', JSON.stringify(meshyData));
+        
+        // We need the taskId for status checking
+        const taskId = meshyData.task_id;
+        
+        if (!taskId) {
+          throw new Error('Meshy API did not return a task_id');
+        }
+        
+        console.log(`Meshy AI task initiated with ID: ${taskId}`);
+        
+        // Update job with Meshy taskId for status tracking
+        const { error: taskUpdateError } = await supabase
+          .from('jobs')
+          .update({
             status: 'rendering',
-            estimatedTime: '1-3 minutes',
-            taskId: taskId
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (apiError) {
-      console.error('Error in Meshy AI model generation:', apiError);
-      
-      // Update job status to error
-      await supabase
-        .from('jobs')
-        .update({ 
-          status: 'error',
-          error_message: apiError.message || 'Unknown error during model generation' 
-        })
-        .eq('id', jobId);
+            // Store taskId in job metadata for status polling
+            metadata: { 
+              meshy_task_id: taskId,
+              started_at: new Date().toISOString()
+            }
+          })
+          .eq('id', jobId);
+        
+        if (taskUpdateError) {
+          throw new Error(`Failed to update job with Meshy task ID: ${taskUpdateError.message}`);
+        }
+        
+        // Return response with task ID for status polling
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Model generation started successfully',
+            job: {
+              id: job.id,
+              status: 'rendering',
+              estimatedTime: '1-3 minutes',
+              taskId: taskId
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (apiError) {
+        console.error('Error in Meshy AI model generation:', apiError);
+        
+        // Update job status to error
+        await supabase
+          .from('jobs')
+          .update({ 
+            status: 'error',
+            error_message: apiError.message || 'Unknown error during model generation' 
+          })
+          .eq('id', jobId);
+        
+        return new Response(
+          JSON.stringify({ error: 'Meshy AI model generation failed', details: apiError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (error) {
+      console.error('Error in generate-model function:', error);
       
       return new Response(
-        JSON.stringify({ error: 'Meshy AI model generation failed', details: apiError.message }),
+        JSON.stringify({ error: error.message || 'Internal server error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
