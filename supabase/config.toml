@@ -34,3 +34,6 @@ verify_jwt = false
 
 [functions.generate-model]
 verify_jwt = false
+
+[functions.generate-images]
+verify_jwt = false

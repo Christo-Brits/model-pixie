@@ -2,51 +2,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import Replicate from "https://esm.sh/replicate@0.25.2";
 import { corsHeaders, getEdgeFunctionConfig } from "../_shared/config.ts";
-
-// Define the Replicate API client
-interface ReplicateOptions {
-  auth: string;
-}
-
-interface PredictionResponse {
-  id: string;
-  version: string;
-  urls: {
-    get: string;
-    cancel: string;
-  };
-  status: string;
-  created_at: string;
-  completed_at?: string;
-  output?: string[];
-  error?: string;
-}
-
-class Replicate {
-  private baseUrl = "https://api.replicate.com/v1";
-  private headers: HeadersInit;
-
-  constructor(options: ReplicateOptions) {
-    this.headers = {
-      Authorization: `Token ${options.auth}`,
-      "Content-Type": "application/json",
-    };
-  }
-
-  async getPrediction(id: string): Promise<PredictionResponse> {
-    const response = await fetch(`${this.baseUrl}/predictions/${id}`, {
-      headers: this.headers,
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Replicate API error: ${error.detail || response.statusText}`);
-    }
-
-    return await response.json();
-  }
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -119,12 +76,12 @@ serve(async (req) => {
     
     // Check prediction status
     console.log(`Checking status for prediction ID: ${predictionId}`);
-    const prediction = await replicate.getPrediction(predictionId);
+    const prediction = await replicate.predictions.get(predictionId);
     console.log(`Current prediction status: ${prediction.status}`);
     
     // If prediction is successful and has output
-    if (prediction.status === 'succeeded' && prediction.output && prediction.output.length > 0) {
-      const modelUrl = prediction.output[0];
+    if (prediction.status === 'succeeded' && prediction.output) {
+      const modelUrl = prediction.output;
       
       // Update job with model URL and set status to 'completed'
       const { error: completeError } = await supabase

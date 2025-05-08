@@ -2,70 +2,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import Replicate from "https://esm.sh/replicate@0.25.2";
 import { corsHeaders, getEdgeFunctionConfig } from "../_shared/config.ts";
 import { isValidURL } from "../_shared/validators.ts";
-
-// Define the Replicate API client
-interface ReplicateOptions {
-  auth: string;
-}
-
-interface PredictionResponse {
-  id: string;
-  version: string;
-  urls: {
-    get: string;
-    cancel: string;
-  };
-  status: string;
-  created_at: string;
-  completed_at?: string;
-  output?: string[];
-  error?: string;
-}
-
-class Replicate {
-  private baseUrl = "https://api.replicate.com/v1";
-  private headers: HeadersInit;
-
-  constructor(options: ReplicateOptions) {
-    this.headers = {
-      Authorization: `Token ${options.auth}`,
-      "Content-Type": "application/json",
-    };
-  }
-
-  async createPrediction(version: string, input: Record<string, unknown>): Promise<PredictionResponse> {
-    const response = await fetch(`${this.baseUrl}/predictions`, {
-      method: "POST",
-      headers: this.headers,
-      body: JSON.stringify({
-        version,
-        input,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Replicate API error: ${error.detail || response.statusText}`);
-    }
-
-    return await response.json();
-  }
-
-  async getPrediction(id: string): Promise<PredictionResponse> {
-    const response = await fetch(`${this.baseUrl}/predictions/${id}`, {
-      headers: this.headers,
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Replicate API error: ${error.detail || response.statusText}`);
-    }
-
-    return await response.json();
-  }
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -143,22 +82,19 @@ serve(async (req) => {
     try {
       console.log(`Starting 3D model generation using Replicate for job ${jobId}`);
       
-      // Initialize Replicate client
+      // Initialize Replicate client with simpler API
       const replicate = new Replicate({
         auth: replicateApiKey,
       });
       
-      // Fetch the prompt from the job record to use for model generation
-      const prompt = job.prompt || "3D model based on the provided image";
-      
-      // Create a prediction with Replicate's Shap-E model
-      const prediction = await replicate.createPrediction(
-        "38fbf344b123c8c2fc742c1f13e45b8c550f9b0b736d7c96acfb5a004fe77f3b", 
-        {
+      // Create a prediction
+      const prediction = await replicate.predictions.create({
+        version: "38fbf344b123c8c2fc742c1f13e45b8c550f9b0b736d7c96acfb5a004fe77f3b",
+        input: {
           image: imageUrl,
           guidance_scale: 15.0
-        }
-      );
+        },
+      });
       
       console.log(`Replicate prediction started with ID: ${prediction.id}`);
       
@@ -177,44 +113,6 @@ serve(async (req) => {
       
       if (predictionUpdateError) {
         throw new Error(`Failed to update job with prediction ID: ${predictionUpdateError.message}`);
-      }
-      
-      // Check if the prediction is already complete (unlikely but possible)
-      if (prediction.status === 'succeeded' && prediction.output && prediction.output.length > 0) {
-        // The model is already generated, update job status
-        const modelUrl = prediction.output[0];
-        
-        // Update job with model URL and set status to 'completed'
-        const { error: completeError } = await supabase
-          .from('jobs')
-          .update({
-            status: 'completed',
-            model_url: modelUrl,
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', jobId);
-        
-        if (completeError) {
-          throw new Error(`Failed to update job completion: ${completeError.message}`);
-        }
-        
-        console.log(`Job ${jobId} completed immediately with model URL: ${modelUrl}`);
-        
-        // Return success response
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Model generation completed successfully',
-            job: {
-              id: job.id,
-              status: 'completed',
-              modelUrl: modelUrl,
-              estimatedTime: 0,
-              predictionId: prediction.id
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
       }
       
       // Return response with prediction ID for status polling
