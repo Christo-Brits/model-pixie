@@ -17,7 +17,13 @@ serve(async (req) => {
     const replicateApiKey = Deno.env.get('REPLICATE_API_KEY');
     
     if (!replicateApiKey) {
-      throw new Error('REPLICATE_API_KEY is not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'REPLICATE_API_KEY is not configured',
+          details: 'The server is missing the Replicate API key configuration. Please contact support.'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     // Parse the request body
@@ -166,7 +172,10 @@ serve(async (req) => {
     console.error('Error in check-model-status function:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        details: 'There was an error checking the model status. Please try again.'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

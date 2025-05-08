@@ -264,6 +264,12 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
         }
         
         const data = await response.json();
+        
+        // Check for error in the response data
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
         return data;
         
       } catch (directFetchError) {
@@ -287,6 +293,11 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
             console.error('Edge function error:', error);
             throw new Error(error.message || 'Failed to generate images');
           }
+          
+          // Check for error in the response data
+          if (data && data.error) {
+            throw new Error(data.error);
+          }
 
           return data;
         } catch (error) {
@@ -304,7 +315,7 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
     }
     
     // If we've exhausted all retries, throw the last error
-    throw lastError;
+    throw lastError || new Error('Failed to generate images after multiple attempts');
   } catch (error) {
     console.error('Error generating images:', error);
     throw error;

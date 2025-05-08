@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2, Gift, LogIn } from 'lucide-react';
+import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2, Gift, LogIn, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { createJob } from '@/services/jobCreationService';
@@ -24,6 +23,12 @@ const Create = () => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddingCredits, setIsAddingCredits] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  // Clear error when component unmounts or when prompt changes
+  useEffect(() => {
+    setGenerationError(null);
+  }, [prompt]);
 
   const handleGenerate = async () => {
     if (!user) {
@@ -43,6 +48,7 @@ const Create = () => {
     
     try {
       setIsGenerating(true);
+      setGenerationError(null);
       
       // First create the job
       const jobData = await createJob(user.id, prompt);
@@ -59,14 +65,29 @@ const Create = () => {
       // Generate images using the job ID
       const generationData = await generateImages(jobId, prompt);
       
-      // Navigate to the image selection screen
-      navigate('/select-image', { state: { jobId } });
+      // Check if the generation was successful
+      if (!generationData || generationData.error) {
+        throw new Error(generationData?.error || 'Failed to generate images');
+      }
+      
+      // Navigate to the appropriate next screen based on the response
+      if (generationData?.job?.status === 'images_ready') {
+        // If images are ready, go to image selection
+        navigate('/select-image', { state: { jobId } });
+      } else {
+        // Otherwise, go to generating page to wait for images
+        navigate('/generating', { state: { jobId } });
+      }
       
     } catch (error) {
       console.error('Error during generation:', error);
+      setGenerationError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      
       toast.error("Generation failed", {
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
       });
+      
+      // We don't navigate away on error, allowing the user to retry
     } finally {
       setIsGenerating(false);
     }
@@ -143,6 +164,16 @@ const Create = () => {
             </div>
             <div className="absolute -z-10 top-1/3 left-1/4 w-24 h-24 bg-pixie-blue/5 rounded-full blur-xl" />
             <div className="absolute -z-10 bottom-1/4 right-1/4 w-20 h-20 bg-pixie-purple/5 rounded-full blur-xl" />
+          </div>
+        )}
+        
+        {generationError && (
+          <div className="mb-6 p-4 border border-destructive/30 bg-destructive/10 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-destructive">Generation Error</p>
+              <p className="text-sm text-destructive/80">{generationError}</p>
+            </div>
           </div>
         )}
         
