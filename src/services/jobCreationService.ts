@@ -16,8 +16,13 @@ export const fetchUserJobs = async (userId: string) => {
 };
 
 // Function to create a new job
-export const createJob = async (userId: string, prompt: string) => {
+export const createJob = async (userId: string | undefined | null, prompt: string) => {
   try {
+    // Check if user is authenticated
+    if (!userId) {
+      throw new Error("Authentication required. Please sign in to continue.");
+    }
+    
     // First check if user has enough credits
     const hasEnoughCredits = await checkUserCredits(userId);
     if (!hasEnoughCredits) {

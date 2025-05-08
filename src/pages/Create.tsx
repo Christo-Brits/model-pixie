@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
 import { BottomNavigation } from '@/components/BottomNavigation';
@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2, Gift } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2, Gift, LogIn } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { createJob } from '@/services/jobCreationService';
 import { generateImages, addTestCredits } from '@/services/generationService';
@@ -26,6 +26,16 @@ const Create = () => {
   const [isAddingCredits, setIsAddingCredits] = useState(false);
 
   const handleGenerate = async () => {
+    if (!user) {
+      toast({
+        title: 'Please sign in',
+        description: 'You need to be signed in to generate models',
+        variant: 'destructive'
+      });
+      navigate('/auth');
+      return;
+    }
+    
     if (!prompt.trim()) {
       toast({
         title: 'Please enter a description',
@@ -39,7 +49,7 @@ const Create = () => {
       setIsGenerating(true);
       
       // First create the job
-      const jobData = await createJob(user?.id || '', prompt);
+      const jobData = await createJob(user.id, prompt);
       
       if (!jobData || !jobData.id) {
         throw new Error('Failed to create job');
@@ -75,6 +85,7 @@ const Create = () => {
         description: 'You need to be signed in to add test credits',
         variant: 'destructive'
       });
+      navigate('/auth');
       return;
     }
 
@@ -179,12 +190,17 @@ const Create = () => {
           <Button 
             className="gap-2 pixie-gradient text-white shadow-lg py-6"
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !user}
           >
             {isGenerating ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Generating...
+              </>
+            ) : !user ? (
+              <>
+                <LogIn className="h-5 w-5" />
+                Sign in to Generate
               </>
             ) : (
               <>
@@ -205,6 +221,11 @@ const Create = () => {
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Adding test credits...
+                </>
+              ) : !user ? (
+                <>
+                  <LogIn className="h-4 w-4" />
+                  Sign in to add credits
                 </>
               ) : (
                 <>

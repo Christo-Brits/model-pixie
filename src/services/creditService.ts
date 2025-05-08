@@ -2,8 +2,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to check if the user has enough credits
-export const checkUserCredits = async (userId: string, requiredCredits: number = 1): Promise<boolean> => {
+export const checkUserCredits = async (userId: string | undefined | null, requiredCredits: number = 1): Promise<boolean> => {
   try {
+    // If no userId is provided, return false (not enough credits)
+    if (!userId) {
+      console.log('No user ID provided for credit check');
+      return false;
+    }
+    
     const { data, error } = await supabase
       .from('user_credits')
       .select('credits')
@@ -23,8 +29,14 @@ export const checkUserCredits = async (userId: string, requiredCredits: number =
 };
 
 // Function to deduct credits from user account
-export const deductUserCredits = async (userId: string, credits: number = 1): Promise<boolean> => {
+export const deductUserCredits = async (userId: string | undefined | null, credits: number = 1): Promise<boolean> => {
   try {
+    // If no userId is provided, return false (cannot deduct)
+    if (!userId) {
+      console.log('No user ID provided for credit deduction');
+      return false;
+    }
+    
     // First check if user has enough credits
     const hasEnoughCredits = await checkUserCredits(userId, credits);
     if (!hasEnoughCredits) {
