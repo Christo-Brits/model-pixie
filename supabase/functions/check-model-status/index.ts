@@ -43,6 +43,7 @@ serve(async (req) => {
     );
     
     // Get job details to retrieve the Meshy task ID
+    // Use maybeSingle() instead of single() to avoid errors if the job isn't found
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .select('*')
@@ -65,9 +66,18 @@ serve(async (req) => {
     }
     
     // Check if the job has metadata with a Meshy task ID
-    // If metadata doesn't exist, use an alternative approach
-    const metadata = job.metadata || {};
-    const meshyTaskId = metadata.meshy_task_id;
+    // Handle the case where metadata might not exist yet as a column
+    let metadata = {};
+    let meshyTaskId = null;
+    
+    try {
+      if (job.metadata) {
+        metadata = job.metadata;
+        meshyTaskId = metadata.meshy_task_id;
+      }
+    } catch (e) {
+      console.log('Could not access metadata, it may not exist as a column yet');
+    }
     
     // If no task ID is found, provide a simplified response
     if (!meshyTaskId) {

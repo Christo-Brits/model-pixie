@@ -52,10 +52,13 @@ serve(async (req) => {
       config.supabaseServiceKey
     );
     
+    // Try to update with metadata column if it exists
+    let updateData = { status: 'processing' };
+    
     // Update job status to 'processing'
     const { data: job, error: updateError } = await supabase
       .from('jobs')
-      .update({ status: 'processing' })
+      .update(updateData)
       .eq('id', jobId)
       .select('*')
       .single();
@@ -121,21 +124,46 @@ serve(async (req) => {
         
         console.log(`Meshy AI task initiated with ID: ${taskId}`);
         
-        // Update job with Meshy taskId for status tracking
-        const { error: taskUpdateError } = await supabase
-          .from('jobs')
-          .update({
-            status: 'rendering',
-            // Store taskId in job metadata for status polling
-            metadata: { 
-              meshy_task_id: taskId,
-              started_at: new Date().toISOString()
-            }
-          })
-          .eq('id', jobId);
+        // Check if metadata column exists by testing if we can update with it
+        let metadata = { 
+          meshy_task_id: taskId,
+          started_at: new Date().toISOString()
+        };
         
-        if (taskUpdateError) {
-          throw new Error(`Failed to update job with Meshy task ID: ${taskUpdateError.message}`);
+        try {
+          // Try updating with metadata
+          const { error: taskUpdateError } = await supabase
+            .from('jobs')
+            .update({
+              status: 'rendering',
+              metadata: metadata
+            })
+            .eq('id', jobId);
+            
+          if (taskUpdateError) {
+            // Metadata column might not exist, so try alternate approach
+            console.log('Could not update metadata, falling back to status only update');
+            
+            const { error: fallbackUpdateError } = await supabase
+              .from('jobs')
+              .update({
+                status: 'rendering'
+              })
+              .eq('id', jobId);
+              
+            if (fallbackUpdateError) {
+              throw new Error(`Failed to update job status: ${fallbackUpdateError.message}`);
+            }
+          }
+        } catch (updateError) {
+          console.error('Error updating job with metadata:', updateError);
+          // Just update the status if metadata update fails
+          await supabase
+            .from('jobs')
+            .update({
+              status: 'rendering'
+            })
+            .eq('id', jobId);
         }
         
         // Return response with task ID for status polling

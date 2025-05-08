@@ -186,21 +186,56 @@ export const checkModelGenerationStatus = async (jobId: string) => {
       
       // Key fix: Properly handle the error case when metadata column doesn't exist
       try {
+        // First, check if we have metadata column
         const { data, error } = await supabase
           .from('jobs')
-          .select('status, model_url, metadata')
+          .select('status, model_url')
           .eq('id', jobId)
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          // Return a standard response format even when querying fails
+          return {
+            success: false,
+            status: 'error',
+            error: 'Failed to retrieve job status: ' + error.message,
+            meshyTaskId: null
+          };
+        }
+        
+        if (!data) {
+          return {
+            success: false,
+            status: 'error',
+            error: 'Job not found',
+            meshyTaskId: null
+          };
+        }
+        
+        // Try to get metadata in a separate query if needed
+        let meshyTaskId = null;
+        try {
+          const { data: metadataResult } = await supabase
+            .from('jobs')
+            .select('metadata')
+            .eq('id', jobId)
+            .single();
+            
+          if (metadataResult && metadataResult.metadata) {
+            meshyTaskId = metadataResult.metadata.meshy_task_id;
+          }
+        } catch (metadataError) {
+          console.log('Metadata column may not exist, continuing without it');
+        }
         
         // Return a standard response format even when querying directly
         return {
           success: true,
           status: data.status,
           modelUrl: data.model_url,
-          // Include meshyTaskId if available in metadata
-          meshyTaskId: data.metadata?.meshy_task_id || null
+          // Include meshyTaskId if available
+          meshyTaskId: meshyTaskId
         };
       } catch (dbError) {
         console.error('Database query error:', dbError);
