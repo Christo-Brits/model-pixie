@@ -12,6 +12,8 @@ const ModelGenerating = () => {
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('Starting process...');
   const [predictionId, setPredictionId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [hasError, setHasError] = useState(false);
   
   // Extract jobId and selected image info from location state or fallback
   const jobId = location.state?.jobId || localStorage.getItem('currentJobId');
@@ -33,6 +35,7 @@ const ModelGenerating = () => {
     
     const startModelGeneration = async () => {
       try {
+        setIsProcessing(true);
         // If we have a selected image URL from the image selection page
         if (selectedImageUrl) {
           setStatusMessage('Starting 3D model generation...');
@@ -66,13 +69,24 @@ const ModelGenerating = () => {
             }
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to start model generation:', error);
+        setHasError(true);
+        setStatusMessage(`Generation error: ${error.message || 'Unknown error'}`);
         toast({
           title: 'Generation Error',
-          description: 'Failed to start model generation. Please try again.',
+          description: error.message || 'Failed to start model generation. The Replicate API key may not be configured.',
           variant: 'destructive'
         });
+        
+        // Update job status to error
+        try {
+          await updateJobStatus(jobId, 'error');
+        } catch (statusError) {
+          console.error('Failed to update job status:', statusError);
+        }
+      } finally {
+        setIsProcessing(false);
       }
     };
     
@@ -83,6 +97,9 @@ const ModelGenerating = () => {
     
     const checkModelStatus = async () => {
       try {
+        // Skip status check if there's already an error
+        if (hasError) return;
+        
         // Use job status polling if no prediction ID is available
         if (!predictionId) {
           return;
@@ -120,6 +137,7 @@ const ModelGenerating = () => {
             clearInterval(pollingInterval);
           }
         } else if (status.status === 'failed' || status.status === 'error') {
+          setHasError(true);
           setStatusMessage('Generation failed. Please try again.');
           toast({
             title: 'Generation failed',
@@ -131,9 +149,6 @@ const ModelGenerating = () => {
           if (pollingInterval) {
             clearInterval(pollingInterval);
           }
-          
-          // Navigate back to create page
-          navigate('/create');
         }
       } catch (error) {
         console.error('Error checking model status:', error);
@@ -141,17 +156,20 @@ const ModelGenerating = () => {
       }
     };
     
-    // Check status immediately
-    checkModelStatus();
-    
-    // Then poll every 10 seconds
-    pollingInterval = window.setInterval(checkModelStatus, 10000);
+    // Only start polling if we don't have an error
+    if (!hasError) {
+      // Check status immediately
+      checkModelStatus();
+      
+      // Then poll every 10 seconds
+      pollingInterval = window.setInterval(checkModelStatus, 10000);
+    }
     
     // Set up progressive visual progress indicators
     const visualProgressInterval = window.setInterval(() => {
       setProgress(prevProgress => {
-        // Only auto-increment progress if we're below 95%
-        if (prevProgress < 95) {
+        // Only auto-increment progress if we're below 95% and we don't have an error
+        if (!hasError && prevProgress < 95) {
           return prevProgress + 1;
         }
         return prevProgress;
@@ -167,7 +185,7 @@ const ModelGenerating = () => {
         clearInterval(visualProgressInterval);
       }
     };
-  }, [navigate, jobId, selectedImageUrl, predictionId]);
+  }, [navigate, jobId, selectedImageUrl, predictionId, hasError]);
   
   const handleCancel = async () => {
     try {
@@ -190,7 +208,7 @@ const ModelGenerating = () => {
       estimatedTime={progress < 80 ? "5-7 min" : "Almost done"}
       creditUsage={1}
       onCancel={handleCancel}
-      statusMessage={statusMessage}
+      statusMessage={hasError ? statusMessage : statusMessage}
     />
   );
 };

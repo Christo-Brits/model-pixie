@@ -36,27 +36,63 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
     
     while (retries > 0) {
       try {
-        // Use the direct Replicate integration via Edge Function
-        const { data, error } = await supabase.functions.invoke(
-          'generate-model',
+        console.log(`Attempt ${4 - retries}/3 to generate 3D model`);
+        
+        // Get the current session asynchronously (proper way)
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        
+        // Use the public anon key from the URL rather than accessing protected property
+        const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w";
+        
+        // Try direct fetch first
+        const response = await fetch(
+          'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/generate-model',
           {
-            body: { jobId, imageUrl },
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+              'apikey': apiKey
+            },
+            body: JSON.stringify({ jobId, imageUrl }),
           }
         );
 
-        if (error) {
-          console.error('Edge function error:', error);
-          throw new Error(error.message || 'Failed to generate model');
+        if (!response.ok) {
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.error || `Failed with status ${response.status}`);
+          } catch (e) {
+            throw new Error(`Failed with status ${response.status}: ${errorText}`);
+          }
         }
 
+        const data = await response.json();
         console.log('Model generation response:', data);
+        
+        // Check for specific error about API key
+        if (data.error && data.error.includes('REPLICATE_API_KEY')) {
+          throw new Error('Replicate API key is not configured in the server. Please contact support.');
+        }
+        
         return data;
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error on try ${4 - retries}/3:`, error);
         lastError = error;
         retries -= 1;
+        
+        // Check if the error is related to the Replicate API key not being configured
+        if (error.message && error.message.includes('REPLICATE_API_KEY')) {
+          // Don't retry if it's an API key configuration issue
+          console.error('Replicate API key is not configured. Stopping retries.');
+          throw new Error('Replicate API key is not configured in the server. Please contact support.');
+        }
+        
         if (retries > 0) {
           // Wait before retrying (exponential backoff)
+          console.log(`Retrying in ${backoffTime/1000} seconds...`);
           await new Promise(resolve => setTimeout(resolve, backoffTime));
           backoffTime *= 2; // Double the backoff time for next retry
         }
@@ -74,19 +110,94 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
 // Function to check the status of a model generation job
 export const checkModelGenerationStatus = async (jobId: string) => {
   try {
-    const { data, error } = await supabase.functions.invoke(
-      'check-model-status',
-      {
-        body: { jobId },
+    // Add retry logic
+    let retries = 3;
+    let lastError = null;
+    let backoffTime = 1000;
+    
+    while (retries > 0) {
+      try {
+        // Get the current session asynchronously (proper way)
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        
+        // Use the public anon key from the URL rather than accessing protected property
+        const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w";
+        
+        // Try direct fetch first
+        const response = await fetch(
+          'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/check-model-status',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+              'apikey': apiKey
+            },
+            body: JSON.stringify({ jobId }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.error || `Failed with status ${response.status}`);
+          } catch (e) {
+            throw new Error(`Failed with status ${response.status}: ${errorText}`);
+          }
+        }
+
+        const data = await response.json();
+        console.log('Check model status response:', data);
+        return data;
+      } catch (error) {
+        console.error(`Error on try ${4 - retries}/3:`, error);
+        lastError = error;
+        retries -= 1;
+        
+        if (retries > 0) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          backoffTime *= 2; // Double the backoff time for next retry
+        }
       }
-    );
-
-    if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message || 'Failed to check model status');
     }
+    
+    // Fallback: If direct API call fails after all retries, try using supabase.functions.invoke
+    try {
+      console.log("Falling back to supabase.functions.invoke for check-model-status");
+      const { data, error } = await supabase.functions.invoke(
+        'check-model-status',
+        {
+          body: { jobId },
+        }
+      );
 
-    return data;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (fallbackError) {
+      // If both approaches fail, fallback to checking the job status directly in the database
+      console.error('Falling back to database check after edge function failure:', fallbackError);
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('status, model_url, metadata')
+        .eq('id', jobId)
+        .single();
+        
+      if (error) throw error;
+      
+      return {
+        success: true,
+        status: data.status,
+        modelUrl: data.model_url,
+        predictionId: data.metadata?.prediction_id
+      };
+    }
   } catch (error) {
     console.error('Error checking model status:', error);
     throw error;

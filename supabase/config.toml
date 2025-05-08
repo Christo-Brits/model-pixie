@@ -37,3 +37,9 @@ verify_jwt = false
 
 [functions.generate-images]
 verify_jwt = false
+
+[functions.job-status]
+verify_jwt = false
+
+[functions.create-job]
+verify_jwt = false
