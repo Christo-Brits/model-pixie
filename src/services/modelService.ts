@@ -5,4 +5,5 @@ export * from './jobStatusService';
 export * from './jobCreationService';
 export * from './generationService';
 export * from './feedbackService';
+export * from './refinementService';
 export * from '@/types/job';

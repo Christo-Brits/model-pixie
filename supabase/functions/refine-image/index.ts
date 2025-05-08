@@ -80,8 +80,14 @@ serve(async (req) => {
     const currentIterations = jobData.iterations || 0;
     if (currentIterations >= MAX_ITERATIONS) {
       return new Response(
-        JSON.stringify({ error: 'Maximum refinement iterations reached (limit: 4)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'iteration_limit_reached',
+          message: "You've reached the maximum number of free iterations. Generate the 3D model with your current design or use an additional credit for more iterations.",
+          requiresCredit: true,
+          iterations: currentIterations,
+          maxIterations: MAX_ITERATIONS
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -130,6 +136,12 @@ serve(async (req) => {
       // Just log it and continue
     }
 
+    // Prepare response, including warning if this is the second-to-last iteration
+    let warningMessage = null;
+    if (newIterationsCount === MAX_ITERATIONS - 1) {
+      warningMessage = "This is your last free iteration. The next refinement will require an additional credit.";
+    }
+
     // Return success response
     return new Response(
       JSON.stringify({
@@ -138,7 +150,9 @@ serve(async (req) => {
           id: jobId,
           iterations: newIterationsCount,
           status: 'refining'
-        }
+        },
+        warning: warningMessage,
+        maxIterations: MAX_ITERATIONS
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

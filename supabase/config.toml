@@ -13,6 +13,9 @@ verify_jwt = true
 [functions.generate-model]
 verify_jwt = true
 
+[functions.use-refinement-credit]
+verify_jwt = true
+
 [functions.job-status]
 verify_jwt = false
 
