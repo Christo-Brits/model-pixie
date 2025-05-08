@@ -43,7 +43,6 @@ serve(async (req) => {
     );
     
     // Get job details to retrieve the Meshy task ID
-    // Use maybeSingle() instead of single() to avoid errors if the job isn't found
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .select('*')
@@ -65,21 +64,21 @@ serve(async (req) => {
       );
     }
     
-    // Check if the job has metadata with a Meshy task ID
-    // Handle the case where metadata might not exist yet as a column
+    // Check if the jobs table has a metadata column
+    const { error: columnCheckError } = await supabase.rpc('check_column_exists', {
+      table_name: 'jobs',
+      column_name: 'metadata'
+    }).select();
+    
+    const hasMetadataColumn = !columnCheckError;
     let meshyTaskId = null;
     
-    try {
-      // First check if the metadata property exists on the job object
-      if (job && typeof job === 'object' && 'metadata' in job && job.metadata) {
-        // Then check if meshy_task_id exists in the metadata
-        if (typeof job.metadata === 'object' && job.metadata.meshy_task_id) {
-          meshyTaskId = job.metadata.meshy_task_id;
-          console.log(`Found Meshy task ID in metadata: ${meshyTaskId}`);
-        }
-      }
-    } catch (e) {
-      console.log('Could not access metadata, it may not exist as a column yet:', e);
+    // Only try to access metadata if the column exists
+    if (hasMetadataColumn && job.metadata && typeof job.metadata === 'object') {
+      meshyTaskId = job.metadata.meshy_task_id || null;
+      console.log(`Found Meshy task ID in metadata: ${meshyTaskId}`);
+    } else {
+      console.log('Could not access metadata, it may not exist as a column yet');
     }
     
     // If no task ID is found, provide a simplified response

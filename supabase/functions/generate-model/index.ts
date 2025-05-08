@@ -17,7 +17,14 @@ serve(async (req) => {
     const meshyApiKey = Deno.env.get('MESHY_API_KEY');
     
     if (!meshyApiKey) {
-      throw new Error('MESHY_API_KEY is not configured');
+      console.error('MESHY_API_KEY is not configured in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          error: 'MESHY_API_KEY is not configured', 
+          details: 'The server is missing the required API key for Meshy integration' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     // Parse the request body
@@ -80,10 +87,12 @@ serve(async (req) => {
     
     try {
       console.log(`Starting 3D model generation using Meshy AI for job ${jobId}`);
+      console.log(`Using Meshy API key (first 4 chars): ${meshyApiKey.substring(0, 4)}...`);
       
       // Prepare Meshy API request with proper error handling
       try {
         // Call Meshy AI API to initiate 3D model generation
+        console.log('Sending request to Meshy API at https://api.meshy.ai/v1/image-to-3d');
         const meshyResponse = await fetch('https://api.meshy.ai/v1/image-to-3d', {
           method: 'POST',
           headers: {
@@ -97,6 +106,8 @@ serve(async (req) => {
           })
         });
         
+        console.log(`Meshy API response status: ${meshyResponse.status}`);
+        
         if (!meshyResponse.ok) {
           const errorData = await meshyResponse.text();
           let errorMessage = `Meshy API error: ${meshyResponse.status}`;
@@ -106,6 +117,7 @@ serve(async (req) => {
           } catch {
             errorMessage += ` - ${errorData}`;
           }
+          console.error(errorMessage);
           throw new Error(errorMessage);
         }
         
@@ -116,6 +128,7 @@ serve(async (req) => {
         const taskId = meshyData.task_id;
         
         if (!taskId) {
+          console.error('No task_id in Meshy API response:', meshyData);
           throw new Error('Meshy API did not return a task_id');
         }
         
@@ -127,62 +140,43 @@ serve(async (req) => {
           started_at: new Date().toISOString()
         };
         
-        // First try to determine if the metadata column exists
-        let hasMetadataColumn = true;
-        try {
-          // Test if we can get the metadata column
-          const { data: metadataTest, error: metadataTestError } = await supabase
-            .from('jobs')
-            .select('metadata')
-            .eq('id', jobId)
-            .limit(1);
-            
-          if (metadataTestError && metadataTestError.message.includes("column 'metadata' does not exist")) {
-            hasMetadataColumn = false;
-            console.log('Metadata column does not exist, will not try to update it');
-          }
-        } catch (testError) {
-          console.error('Error testing for metadata column:', testError);
-          hasMetadataColumn = false;
-        }
+        // Check if the metadata column exists in the jobs table
+        const { error: columnCheckError } = await supabase.rpc('check_column_exists', {
+          table_name: 'jobs',
+          column_name: 'metadata'
+        }).select();
+        
+        const hasMetadataColumn = !columnCheckError;
         
         try {
-          // Try updating with or without metadata based on column existence
+          // Update the job with status and optional metadata
+          const updateData: Record<string, any> = { status: 'rendering' };
+          
+          // Only add metadata if the column exists
           if (hasMetadataColumn) {
-            const { error: taskUpdateError } = await supabase
-              .from('jobs')
-              .update({
-                status: 'rendering',
-                metadata: metadata
-              })
-              .eq('id', jobId);
-              
-            if (taskUpdateError) {
-              console.error('Error updating job with metadata:', taskUpdateError);
-              // Fall back to status-only update
-              await supabase
-                .from('jobs')
-                .update({ status: 'rendering' })
-                .eq('id', jobId);
-            }
-          } else {
-            // Just update the status if metadata column doesn't exist
+            updateData.metadata = metadata;
+          }
+          
+          const { error: jobUpdateError } = await supabase
+            .from('jobs')
+            .update(updateData)
+            .eq('id', jobId);
+            
+          if (jobUpdateError) {
+            console.error('Error updating job with metadata:', jobUpdateError);
+            // Fall back to status-only update
             await supabase
               .from('jobs')
               .update({ status: 'rendering' })
               .eq('id', jobId);
           }
         } catch (updateError) {
-          console.error('Error updating job:', updateError);
+          console.error('Error in job update:', updateError);
           // Make sure at least the status is updated
-          try {
-            await supabase
-              .from('jobs')
-              .update({ status: 'rendering' })
-              .eq('id', jobId);
-          } catch (finalError) {
-            console.error('Even status update failed:', finalError);
-          }
+          await supabase
+            .from('jobs')
+            .update({ status: 'rendering' })
+            .eq('id', jobId);
         }
         
         // Return response with task ID for status polling

@@ -216,15 +216,14 @@ export const checkModelGenerationStatus = async (jobId: string) => {
         // Try to get metadata in a separate query if needed
         let meshyTaskId = null;
         try {
-          const metadataResult = await supabase
+          const { data: metadataResult, error: metadataError } = await supabase
             .from('jobs')
             .select('metadata')
             .eq('id', jobId)
             .single();
             
-          // Fix: Only try to access metadata if the query was successful
-          if (metadataResult && !metadataResult.error && metadataResult.data && metadataResult.data.metadata) {
-            meshyTaskId = metadataResult.data.metadata.meshy_task_id;
+          if (!metadataError && metadataResult && metadataResult.metadata) {
+            meshyTaskId = metadataResult.metadata.meshy_task_id;
           } else {
             console.log('Metadata column may not exist or is empty');
           }
