@@ -27,20 +27,16 @@ const Create = () => {
 
   const handleGenerate = async () => {
     if (!user) {
-      toast({
-        title: 'Please sign in',
+      toast.error("Please sign in", {
         description: 'You need to be signed in to generate models',
-        variant: 'destructive'
       });
       navigate('/auth');
       return;
     }
     
     if (!prompt.trim()) {
-      toast({
-        title: 'Please enter a description',
+      toast.error("Please enter a description", {
         description: 'You need to describe what you want to create',
-        variant: 'destructive'
       });
       return;
     }
@@ -68,10 +64,8 @@ const Create = () => {
       
     } catch (error) {
       console.error('Error during generation:', error);
-      toast({
-        title: 'Generation failed',
+      toast.error("Generation failed", {
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
-        variant: 'destructive'
       });
     } finally {
       setIsGenerating(false);
@@ -80,10 +74,8 @@ const Create = () => {
 
   const handleAddTestCredits = async () => {
     if (!user) {
-      toast({
-        title: 'Please sign in',
+      toast.error("Please sign in", {
         description: 'You need to be signed in to add test credits',
-        variant: 'destructive'
       });
       navigate('/auth');
       return;
@@ -98,17 +90,14 @@ const Create = () => {
       // Refresh the credits display
       await refetchCredits();
       
-      toast({
-        title: 'Test credits added',
+      toast.success("Test credits added", {
         description: '10 test credits have been added to your account',
       });
       
     } catch (error) {
       console.error('Error adding test credits:', error);
-      toast({
-        title: 'Failed to add test credits',
+      toast.error("Failed to add test credits", {
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
-        variant: 'destructive'
       });
     } finally {
       setIsAddingCredits(false);
