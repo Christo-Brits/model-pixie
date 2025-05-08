@@ -32,6 +32,7 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
     // Add retry logic for network issues
     let retries = 3;
     let lastError = null;
+    let backoffTime = 1000; // Start with 1 second
     
     while (retries > 0) {
       try {
@@ -56,7 +57,8 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
         retries -= 1;
         if (retries > 0) {
           // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          backoffTime *= 2; // Double the backoff time for next retry
         }
       }
     }
@@ -99,34 +101,70 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
     // Add retry logic for network issues
     let retries = 3;
     let lastError = null;
+    let backoffTime = 1000; // Start with 1 second
     
     while (retries > 0) {
       try {
-        // Try to use the Edge Function for image generation
-        const { data, error } = await supabase.functions.invoke(
-          'generate-images',
+        // Try to use the direct fetch approach first
+        console.log("Attempt direct API call to generate-images edge function");
+        const response = await fetch(
+          'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/generate-images',
           {
-            body: { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+              'apikey': supabase.supabaseKey
+            },
+            body: JSON.stringify({ 
               jobId, 
               prompt,
               sketch // Optional base64-encoded sketch
-            },
+            })
           }
         );
-
-        if (error) {
-          console.error('Edge function error:', error);
-          throw new Error(error.message || 'Failed to generate images');
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to generate images: ${errorText}`);
         }
-
+        
+        const data = await response.json();
         return data;
-      } catch (error) {
-        console.error(`Error on try ${4 - retries}/3:`, error);
-        lastError = error;
-        retries -= 1;
-        if (retries > 0) {
-          // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+        
+      } catch (directFetchError) {
+        console.error(`Direct fetch approach failed:`, directFetchError);
+        
+        try {
+          // Fall back to supabase.functions.invoke if direct fetch fails
+          console.log("Falling back to supabase.functions.invoke");
+          const { data, error } = await supabase.functions.invoke(
+            'generate-images',
+            {
+              body: { 
+                jobId, 
+                prompt,
+                sketch // Optional base64-encoded sketch
+              },
+            }
+          );
+
+          if (error) {
+            console.error('Edge function error:', error);
+            throw new Error(error.message || 'Failed to generate images');
+          }
+
+          return data;
+        } catch (error) {
+          console.error(`Error on try ${4 - retries}/3:`, error);
+          lastError = error;
+          retries -= 1;
+          if (retries > 0) {
+            // Wait before retrying (exponential backoff)
+            console.log(`Retrying in ${backoffTime/1000} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
+            backoffTime *= 2; // Double the backoff time for next retry
+          }
         }
       }
     }
