@@ -1,0 +1,75 @@
+
+import { supabase } from '@/integrations/supabase/client';
+
+// Function to refine an image/model
+export const refineModel = async (jobId: string, editInstructions: string) => {
+  try {
+    // Try to use the Edge Function for refinement
+    const { data, error } = await supabase.functions.invoke(
+      'refine-image',
+      {
+        body: { jobId, editInstructions },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to refine image');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error refining image:', error);
+    throw error;
+  }
+};
+
+// Function to generate a model from an image
+export const generateModel = async (jobId: string, imageUrl: string) => {
+  try {
+    // Try to use the Edge Function for model generation
+    const { data, error } = await supabase.functions.invoke(
+      'generate-model',
+      {
+        body: { jobId, imageUrl },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to generate model');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error generating model:', error);
+    throw error;
+  }
+};
+
+// Function to generate images from a prompt
+export const generateImages = async (jobId: string, prompt: string, sketch?: string) => {
+  try {
+    // Try to use the Edge Function for image generation
+    const { data, error } = await supabase.functions.invoke(
+      'generate-images',
+      {
+        body: { 
+          jobId, 
+          prompt,
+          sketch // Optional base64-encoded sketch
+        },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to generate images');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error generating images:', error);
+    throw error;
+  }
+};

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ModelGenerationLoading } from '@/components/ModelGenerationLoading';
 import { toast } from '@/hooks/use-toast';
-import { pollJobStatus, getStatusDescription } from '@/services/modelService';
+import { pollJobStatus, getStatusDescription } from '@/services/jobStatusService';
 
 const ModelGenerating = () => {
   const navigate = useNavigate();
