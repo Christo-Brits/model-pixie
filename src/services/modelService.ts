@@ -176,6 +176,33 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
   }
 };
 
+// Function to generate images from a prompt
+export const generateImages = async (jobId: string, prompt: string, sketch?: string) => {
+  try {
+    // Try to use the Edge Function for image generation
+    const { data, error } = await supabase.functions.invoke(
+      'generate-images',
+      {
+        body: { 
+          jobId, 
+          prompt,
+          sketch // Optional base64-encoded sketch
+        },
+      }
+    );
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to generate images');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error generating images:', error);
+    throw error;
+  }
+};
+
 // Function to fetch a specific job
 export const fetchJob = async (jobId: string) => {
   const { data, error } = await supabase
@@ -323,6 +350,8 @@ export const getStatusDescription = (status: string) => {
       return 'Rendering the model';
     case 'refining':
       return 'Refining the image';
+    case 'images_ready':
+      return 'Choose an image to create a 3D model';
     case 'completed':
       return 'Processing complete';
     case 'error':

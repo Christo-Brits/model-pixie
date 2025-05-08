@@ -46,6 +46,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          image_variations: Json | null
           iterations: number | null
           job_id: string | null
           model_url: string | null
@@ -57,6 +58,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          image_variations?: Json | null
           iterations?: number | null
           job_id?: string | null
           model_url?: string | null
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          image_variations?: Json | null
           iterations?: number | null
           job_id?: string | null
           model_url?: string | null

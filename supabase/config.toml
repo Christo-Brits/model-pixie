@@ -4,6 +4,9 @@ project_id = "pvtrmpaxhbvhvdiojqkd"
 [functions.create-job]
 verify_jwt = true
 
+[functions.generate-images]
+verify_jwt = true
+
 [functions.refine-image]
 verify_jwt = true
 
