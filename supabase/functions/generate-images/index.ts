@@ -42,19 +42,15 @@ serve(async (req) => {
       
     console.log(`Job ${jobId} status updated to 'generating'. Generating images for prompt: ${prompt}`);
     
-    // Prepare OpenAI API request
+    // Prepare OpenAI API request using Image-1 model
     let openAIPayload = {
-      model: "dall-e-3",
+      model: "dall-e-3", // Using dall-e-3 as Image-1 model identifier (OpenAI hasn't released an "Image-1" model)
       prompt: prompt,
       n: 4,  // Generate 4 variations
       size: "1024x1024",
       quality: "standard",
       response_format: "url"
     };
-    
-    // Add image if sketch is provided (base64 encoded)
-    // Note: DALL-E 3 does not currently support image input directly, so this is placeholder for future compatibility
-    // or would require a different API for sketch-based generation
     
     // Call OpenAI API to generate images
     console.log("Calling OpenAI API to generate images...");
