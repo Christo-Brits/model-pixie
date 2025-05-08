@@ -50,6 +50,7 @@ export const generateModel = async (jobId: string, imageUrl: string) => {
 // Function to generate images from a prompt
 export const generateImages = async (jobId: string, prompt: string, sketch?: string) => {
   try {
+    console.log(`Generating images for job ${jobId} with prompt: ${prompt}`);
     // Try to use the Edge Function for image generation
     const { data, error } = await supabase.functions.invoke(
       'generate-images',

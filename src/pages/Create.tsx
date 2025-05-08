@@ -8,15 +8,61 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Text, PenLine, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Text, PenLine, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { createJob } from '@/services/jobCreationService';
+import { generateImages } from '@/services/generationService';
 
 const Create = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [inputMode, setInputMode] = useState<"text" | "sketch">("text");
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleGenerate = () => {
-    navigate('/generating');
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: 'Please enter a description',
+        description: 'You need to describe what you want to create',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    try {
+      setIsGenerating(true);
+      
+      // First create the job
+      const jobData = await createJob(user?.id || '', prompt);
+      
+      if (!jobData || !jobData.id) {
+        throw new Error('Failed to create job');
+      }
+      
+      const jobId = jobData.id;
+      
+      // Store jobId in localStorage
+      localStorage.setItem('currentJobId', jobId);
+      
+      // Generate images using the job ID
+      const generationData = await generateImages(jobId, prompt);
+      
+      // Navigate to the image selection screen
+      navigate('/select-image', { state: { jobId } });
+      
+    } catch (error) {
+      console.error('Error during generation:', error);
+      toast({
+        title: 'Generation failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -44,6 +90,8 @@ const Create = () => {
             <Textarea 
               placeholder="Describe your model in detail..." 
               className="min-h-[200px] p-4 resize-y bg-background/60 backdrop-blur-sm border-pixie-purple/20"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
             />
             <div className="absolute -z-10 top-1/3 left-1/4 w-24 h-24 bg-pixie-blue/5 rounded-full blur-xl" />
             <div className="absolute -z-10 bottom-1/4 right-1/4 w-20 h-20 bg-pixie-purple/5 rounded-full blur-xl" />
@@ -92,9 +140,19 @@ const Create = () => {
           <Button 
             className="gap-2 pixie-gradient text-white shadow-lg py-6"
             onClick={handleGenerate}
+            disabled={isGenerating}
           >
-            <Sparkles className="h-5 w-5" />
-            Generate
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5" />
+                Generate
+              </>
+            )}
           </Button>
         </div>
       </main>

@@ -42,11 +42,11 @@ serve(async (req) => {
       
     console.log(`Job ${jobId} status updated to 'generating'. Generating images for prompt: ${prompt}`);
     
-    // Prepare OpenAI API request using latest model
+    // Prepare OpenAI API request using dalle-3 model
     let openAIPayload = {
-      model: "gpt-4.1-vision", // Using the newer vision model (Note: Replace with actual model name if different)
+      model: "dall-e-3", // Using the correct DALL-E 3 model
       prompt: prompt,
-      n: 4,  // Generate 4 variations
+      n: 1,  // DALL-E 3 only supports 1 image per request
       size: "1024x1024",
       quality: "standard",
       response_format: "url"
@@ -80,12 +80,42 @@ serve(async (req) => {
     const imageData = await openAIResponse.json();
     console.log("Images generated successfully");
     
+    // For DALL-E 3, we need to generate multiple images with separate API calls
+    // Let's make 3 more calls to get 4 variations total
+    const additionalImages = [];
+    
+    for (let i = 0; i < 3; i++) {
+      try {
+        const additionalResponse = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`
+          },
+          body: JSON.stringify(openAIPayload)
+        });
+        
+        if (additionalResponse.ok) {
+          const additionalData = await additionalResponse.json();
+          if (additionalData.data && additionalData.data.length > 0) {
+            additionalImages.push(additionalData.data[0]);
+          }
+        }
+      } catch (err) {
+        console.error(`Error generating additional image ${i+1}:`, err);
+        // Continue with other images if one fails
+      }
+    }
+    
+    // Combine all images
+    const allImages = [...imageData.data, ...additionalImages];
+    
     // Upload each image to Supabase Storage
     const imageUrls = [];
     const imageVariations = [];
     
-    for (let i = 0; i < imageData.data.length; i++) {
-      const imageUrl = imageData.data[i].url;
+    for (let i = 0; i < allImages.length; i++) {
+      const imageUrl = allImages[i].url;
       
       // Fetch image data
       const imageResponse = await fetch(imageUrl);
