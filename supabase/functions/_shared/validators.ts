@@ -1,26 +1,50 @@
-
 /**
- * Validation utilities for Supabase Edge Functions
+ * Shared validation functions for Supabase Edge Functions
+ * 
+ * This module provides validation utilities used across multiple edge functions
  */
 
 /**
- * Validate if a string is a valid URL
+ * Validates a URL string
+ * @param urlString URL to validate
+ * @returns boolean indicating if the URL is valid
  */
-export function isValidURL(url: string): boolean {
+export function isValidURL(urlString: string): boolean {
   try {
-    new URL(url);
-    return true;
-  } catch {
+    // Check if the string is a data URL
+    if (urlString.startsWith('data:')) {
+      return true;
+    }
+    
+    // Otherwise, check if it's a valid URL
+    const url = new URL(urlString);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (e) {
     return false;
   }
 }
 
 /**
- * Validate if a string is a valid UUID
+ * Validates a UUID string
+ * @param uuid UUID string to validate
+ * @returns boolean indicating if the UUID is valid
  */
 export function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
+}
+
+/**
+ * Check if base64 string is valid
+ * @param str Base64 string to validate
+ * @returns boolean indicating if the string is valid base64
+ */
+export function isValidBase64(str: string): boolean {
+  try {
+    return btoa(atob(str)) === str;
+  } catch (err) {
+    return false;
+  }
 }
 
 /**

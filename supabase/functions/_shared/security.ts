@@ -1,166 +1,104 @@
-
 /**
- * Security utilities for ModelPixie AI Edge Functions
+ * Security helpers for Supabase Edge Functions
  * 
- * This module provides standardized security configurations including:
- * - CORS headers with configurable origins
- * - Security headers for protection against common web vulnerabilities
- * - Rate limiting utilities
- * - Authentication helpers
+ * This module provides rate limiting, CORS, and other security utilities
  */
 
-import { getEnvironment } from "./config.ts";
+// Store rate limit data in memory (will reset when edge function cold starts)
+// For production, consider using a persistent KV store or Redis
+const rateLimitStore = new Map<string, { count: number; timestamp: number }>();
 
-// Define allowed origins based on environment
-export function getAllowedOrigins(): string[] {
-  const environment = getEnvironment();
+// Default CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
+};
+
+/**
+ * Handle OPTIONS requests with appropriate CORS headers
+ */
+export function handleOptionsRequest(req: Request): Response {
+  // Get the requesting origin
+  const origin = req.headers.get('origin') || '*';
   
-  // Base origins that are always allowed
-  const origins = [
-    "https://modelpixie.ai",
-    "https://app.modelpixie.ai",
-    "https://www.modelpixie.ai"
-  ];
-  
-  // Add environment-specific origins
-  if (environment === 'production') {
-    // Only secure origins in production
-  } else if (environment === 'staging') {
-    origins.push("https://staging.modelpixie.ai");
-  } else {
-    // Add development origins
-    origins.push(
-      "http://localhost:8080",
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://lovable.dev",
-      "https://app.lovable.dev"
-    );
-  }
-  
-  return origins;
+  // Create custom CORS headers for this specific origin
+  const headers = getAllHeaders(origin);
+
+  // Return a response with appropriate headers for the OPTIONS request
+  return new Response(null, { headers });
 }
 
-// Standard CORS headers with origin validation
-export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
-  const allowedOrigins = getAllowedOrigins();
-  
-  // Determine the appropriate origin value for the Access-Control-Allow-Origin header
-  let originValue = '*';
-  
-  // If we have a request origin and we're being specific about allowed origins
-  if (requestOrigin && allowedOrigins.length > 0) {
-    // Only set the specific origin if it's in our allowed list
-    originValue = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
-  }
-  
+/**
+ * Get all CORS headers for a specific origin
+ */
+export function getAllHeaders(origin: string): HeadersInit {
   return {
-    'Access-Control-Allow-Origin': originValue,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Max-Age': '86400', // 24 hours cache for preflight requests
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin,
   };
 }
 
-// Security headers to protect against common web vulnerabilities
-export function getSecurityHeaders(): Record<string, string> {
-  return {
-    'Content-Security-Policy': "default-src 'self'; img-src 'self' data: storage.googleapis.com *.supabase.co; script-src 'self'",
-    'X-Content-Type-Options': 'nosniff',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
-  };
-}
-
-// Helper to combine CORS and security headers
-export function getAllHeaders(requestOrigin?: string): Record<string, string> {
-  return {
-    ...getCorsHeaders(requestOrigin),
-    ...getSecurityHeaders(),
-  };
-}
-
-// Simple in-memory rate limiting
-// Note: This is basic and will reset when function instances are recycled
-// For production, use a more persistent solution
-const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
-
-export function checkRateLimit(
-  ip: string,
-  maxRequests: number = 60,
-  windowMs: number = 60000 // 1 minute
-): boolean {
+/**
+ * Check if a client has exceeded rate limits
+ * 
+ * @param clientIdentifier IP address or other identifier
+ * @param limit Maximum requests per minute
+ * @returns boolean indicating if the request should be allowed
+ */
+export function checkRateLimit(clientIdentifier: string, limit: number): boolean {
   const now = Date.now();
-  const record = ipRequestCounts.get(ip);
+  const windowMs = 60 * 1000; // 1 minute window
   
-  if (!record) {
-    ipRequestCounts.set(ip, { count: 1, timestamp: now });
-    return true; // First request is allowed
+  // Get or initialize rate limit data for this client
+  const data = rateLimitStore.get(clientIdentifier) || { count: 0, timestamp: now };
+  
+  // Reset if outside the current window
+  if (now - data.timestamp > windowMs) {
+    data.count = 0;
+    data.timestamp = now;
   }
   
-  // Reset if outside window
-  if (now - record.timestamp > windowMs) {
-    ipRequestCounts.set(ip, { count: 1, timestamp: now });
-    return true;
-  }
+  // Increment request count
+  data.count++;
   
-  // Increment and check
-  record.count += 1;
-  if (record.count > maxRequests) {
-    return false; // Rate limit exceeded
-  }
+  // Update the store
+  rateLimitStore.set(clientIdentifier, data);
   
-  return true; // Under limit
+  // Allow the request if under the limit
+  return data.count <= limit;
 }
 
-// Return standardized rate limit exceeded response
+/**
+ * Return a standardized rate limit exceeded response
+ */
 export function getRateLimitResponse(): Response {
   return new Response(
     JSON.stringify({
       error: 'Too many requests',
-      message: 'Rate limit exceeded. Please try again later.'
+      message: 'Rate limit exceeded. Please try again later.',
     }),
     {
       status: 429,
       headers: {
-        ...getAllHeaders(),
+        ...corsHeaders,
         'Content-Type': 'application/json',
-        'Retry-After': '60'
-      }
+        'Retry-After': '60',
+      },
     }
   );
 }
 
-// Extract user ID from authorization header if present
-export function extractUserIdFromRequest(req: Request): string | null {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-    
-    // Extract the JWT token
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-      return null;
-    }
-    
-    // Simple JWT payload extraction (not full validation)
-    // For actual validation, use Supabase Auth or a JWT library
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.sub || null; // 'sub' contains the user ID in JWT standard
-  } catch (error) {
-    console.error('Error extracting user ID from token:', error);
-    return null;
+/**
+ * Validate a JWT token from Supabase Auth
+ * This is a simple implementation; for production use a more robust JWT validation
+ */
+export async function validateJWT(authHeader: string | null): Promise<boolean> {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return false;
   }
-}
-
-// Helper for handling OPTIONS requests
-export function handleOptionsRequest(req: Request): Response {
-  const origin = req.headers.get('origin') || '';
-  return new Response(null, { 
-    status: 204, 
-    headers: getAllHeaders(origin)
-  });
+  
+  // In a real implementation, you would validate the JWT signature and claims
+  // This is a placeholder for demonstration
+  return true;
 }
