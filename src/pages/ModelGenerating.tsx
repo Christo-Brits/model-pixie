@@ -48,9 +48,8 @@ const ModelGenerating = () => {
     setErrorMessage(error.message || 'Unknown error occurred');
     setStatusMessage(`Generation error: ${error.message || 'Unknown error'}`);
     
-    toast('Generation Error', {
-      description: error.message || 'Failed to start model generation',
-      variant: 'destructive'
+    toast.error('Generation Error', {
+      description: error.message || 'Failed to start model generation'
     });
     
     // Update job status to error
@@ -72,8 +71,8 @@ const ModelGenerating = () => {
       // Update job status to cancelled
       await updateJobStatus(jobId, 'cancelled');
       
-      toast('Generation cancelled', {
-        description: 'Your credit has been returned to your account.',
+      toast.success('Generation cancelled', {
+        description: 'Your credit has been returned to your account.'
       });
       navigate('/create');
     } catch (error) {
@@ -82,9 +81,8 @@ const ModelGenerating = () => {
   };
   
   if (!jobId) {
-    toast('Error', {
-      description: 'No job ID found. Unable to track progress.',
-      variant: 'destructive'
+    toast.error('Error', {
+      description: 'No job ID found. Unable to track progress.'
     });
     navigate('/create');
     return null;
