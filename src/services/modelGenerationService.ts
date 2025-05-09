@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { apiRequest } from './utils/apiUtils';
+import { generateMeshyModel, checkMeshyModelStatus } from './meshyApiService';
 
 /**
  * Function to generate a 3D model from an image
@@ -112,18 +113,18 @@ export const checkModelGenerationStatus = async (jobId: string): Promise<any> =>
     try {
       console.log('Falling back to database check for job status');
       
-      const { data, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from('jobs')
         .select('status, model_url')
         .eq('id', jobId)
         .single();
         
-      if (error) {
-        console.error('Database error:', error);
+      if (queryError) {
+        console.error('Database error:', queryError);
         return {
           success: false,
           status: 'error',
-          error: 'Failed to retrieve job status: ' + error.message,
+          error: 'Failed to retrieve job status: ' + queryError.message,
           meshyTaskId: null
         };
       }
