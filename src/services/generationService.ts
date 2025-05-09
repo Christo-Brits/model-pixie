@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to refine an image/model
@@ -217,7 +216,8 @@ export const checkModelGenerationStatus = async (jobId: string) => {
         let meshyTaskId = null;
         try {
           // Fixed: First check if the metadata column exists before attempting to query it
-          const { data: columnCheckData, error: columnCheckError } = await supabase.rpc('check_column_exists', {
+          // Use a properly typed approach to call the RPC function
+          const { data: columnCheckData, error: columnCheckError } = await supabase.rpc<boolean>('check_column_exists', {
             table_name: 'jobs',
             column_name: 'metadata'
           });
@@ -230,10 +230,13 @@ export const checkModelGenerationStatus = async (jobId: string) => {
               .from('jobs')
               .select('metadata')
               .eq('id', jobId)
-              .single();
+              .maybeSingle();
               
+            // Fix: Use optional chaining and type guards to safely access metadata
             if (!metadataError && metadataResult && metadataResult.metadata) {
-              meshyTaskId = metadataResult.metadata.meshy_task_id;
+              // Safe access pattern using optional chaining and type assertion if needed
+              const metadata = metadataResult.metadata as Record<string, any>;
+              meshyTaskId = metadata?.meshy_task_id || null;
             }
           } else {
             console.log('Metadata column does not exist in jobs table');
@@ -392,4 +395,3 @@ export const addTestCredits = async (userId: string, credits: number = 10) => {
     throw error;
   }
 };
-
