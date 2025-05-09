@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { generateModel } from '@/services/modelGenerationService';
 import { updateJobStatus } from '@/services/jobStatusService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModelGenerationProcessProps {
   jobId: string;
@@ -164,9 +165,6 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
     // We only want to run this effect once when the component mounts
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Include supabase import
-  const { supabase } = require('@/integrations/supabase/client');
 
   return null; // This is a logic-only component
 };
