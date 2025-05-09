@@ -1,32 +1,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Function to use a credit to reset refinement iterations
-export const useRefinementCredit = async (jobId: string, userId: string): Promise<{
-  success: boolean;
-  message: string;
-  creditsRemaining?: number;
-}> => {
+/**
+ * Function to refine an image/model
+ * @param jobId The ID of the job
+ * @param editInstructions The instructions for refining the image/model
+ */
+export const refineModel = async (jobId: string, editInstructions: string) => {
   try {
-    // Call the Edge Function for using a refinement credit
+    // Try to use the Edge Function for refinement
     const { data, error } = await supabase.functions.invoke(
-      'use-refinement-credit',
+      'refine-image',
       {
-        body: { 
-          jobId,
-          userId 
-        },
+        body: { jobId, editInstructions },
       }
     );
 
     if (error) {
       console.error('Edge function error:', error);
-      throw new Error(error.message || 'Failed to use refinement credit');
+      throw new Error(error.message || 'Failed to refine image');
     }
 
     return data;
   } catch (error) {
-    console.error('Error using refinement credit:', error);
+    console.error('Error refining image:', error);
     throw error;
   }
 };
