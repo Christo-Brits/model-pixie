@@ -201,19 +201,18 @@ export const checkModelGenerationStatus = async (jobId: string) => {
         // Try to get metadata in a separate query if needed
         let meshyTaskId = null;
         try {
-          // Fixed: First check if the metadata column exists before attempting to query it
-          // Use proper typing for the RPC function with both input and output types
-          interface CheckColumnExistsParams {
+          // Fixed: Correct the type parameter for the RPC call
+          // Define the input type and expected return type
+          type CheckColumnExistsParams = {
             table_name: string;
             column_name: string;
-          }
+          };
           
-          // Fix: Using the correct type arguments for the RPC call
           const { data: columnCheckData, error: columnCheckError } = await supabase
-            .rpc<boolean, CheckColumnExistsParams>('check_column_exists', {
+            .rpc('check_column_exists', {
               table_name: 'jobs',
               column_name: 'metadata'
-            });
+            } as CheckColumnExistsParams);
           
           const hasMetadataColumn = !columnCheckError && columnCheckData === true;
           
@@ -225,11 +224,16 @@ export const checkModelGenerationStatus = async (jobId: string) => {
               .eq('id', jobId)
               .maybeSingle();
               
-            // Use proper type checking and safe access
-            if (!metadataError && metadataResult && metadataResult.metadata) {
-              // Safe access using type assertion
-              const metadata = metadataResult.metadata as Record<string, any>;
-              meshyTaskId = metadata?.meshy_task_id || null;
+            // Safe access with proper type checking
+            if (!metadataError && metadataResult) {
+              // Check if metadataResult actually has data and the metadata field
+              const metadata = metadataResult && typeof metadataResult === 'object' && 'metadata' in metadataResult
+                ? metadataResult.metadata as Record<string, any>
+                : null;
+                
+              if (metadata) {
+                meshyTaskId = metadata.meshy_task_id || null;
+              }
             }
           } else {
             console.log('Metadata column does not exist in jobs table');
