@@ -32,9 +32,17 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
         // If we have a selected image URL from the image selection page
         if (selectedImageUrl) {
           setHasInitiated(true);
+          
+          // Send initial status updates
           onStatusUpdate('Starting 3D model generation...', 10);
           
           console.log(`Initiating model generation for job ${jobId} with image: ${selectedImageUrl}`);
+          
+          // Short delay to allow UI to update
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Update progress to show activity
+          onStatusUpdate('Preparing to generate model...', 15);
           
           // Call the generate model function with the selected image
           const result = await generateModel(jobId, selectedImageUrl);
@@ -59,7 +67,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
             if (result.job.status === 'completed' && result.job.modelUrl) {
               onStatusUpdate('Model generation complete!', 100);
               
-              toast('Model generated successfully!', {
+              toast.success('Model generated successfully!', {
                 description: 'Your 3D model is ready to preview.'
               });
               
@@ -72,6 +80,8 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
               });
             }
           }
+        } else {
+          throw new Error('No image selected for model generation');
         }
       } catch (error: any) {
         console.error('Failed to start model generation:', error);

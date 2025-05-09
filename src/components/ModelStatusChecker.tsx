@@ -24,9 +24,10 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
   const navigate = useNavigate();
   const pollingIntervalRef = useRef<number | null>(null);
   const visualProgressIntervalRef = useRef<number | null>(null);
-  const lastProgressRef = useRef<number>(0);
+  const lastProgressRef = useRef<number>(20); // Start at 20% since we've already initiated
   const processingStartTimeRef = useRef<number | null>(null);
   const maxTimeoutRef = useRef<number | null>(null);
+  const pollingCountRef = useRef<number>(0);
   
   useEffect(() => {
     // Setup max timeout to prevent infinite waiting
@@ -45,7 +46,25 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
     // Start tracking processing time
     if (!processingStartTimeRef.current) {
       processingStartTimeRef.current = Date.now();
+      console.log('Starting model status polling at:', new Date().toISOString());
     }
+    
+    // Function to clean up all intervals and timeouts
+    const cleanupIntervals = () => {
+      console.log('Cleaning up intervals and timeouts');
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (visualProgressIntervalRef.current) {
+        clearInterval(visualProgressIntervalRef.current);
+        visualProgressIntervalRef.current = null;
+      }
+      if (maxTimeoutRef.current) {
+        clearTimeout(maxTimeoutRef.current);
+        maxTimeoutRef.current = null;
+      }
+    };
     
     // Only setup polling once
     if (pollingIntervalRef.current) return;
@@ -58,13 +77,14 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
           return;
         }
         
-        console.log(`Checking status for model with job ID: ${jobId}, prediction ID: ${predictionId}`);
+        pollingCountRef.current += 1;
+        console.log(`Checking status for model with job ID: ${jobId}, prediction ID: ${predictionId}, poll #${pollingCountRef.current}`);
         
         // Check status using the prediction ID
         const status = await checkModelGenerationStatus(jobId);
         console.log("Model status check returned:", status);
         
-        if (status.status === 'processing' || status.status === 'starting') {
+        if (status.status === 'processing' || status.status === 'starting' || status.status === 'rendering') {
           // Calculate how long we've been processing
           const elapsedMinutes = processingStartTimeRef.current ? 
             (Date.now() - processingStartTimeRef.current) / 60000 : 0;
@@ -78,20 +98,23 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
             progressValue = Math.round(status.progress * 100);
             timeMessage = status.estimatedTimeRemaining || 'Processing...';
           } else if (elapsedMinutes < 1) {
-            progressValue = 25;
+            progressValue = 25 + (pollingCountRef.current * 2); // Increment by 2% each poll at the start
             timeMessage = 'Estimated time: 5-7 minutes';
           } else if (elapsedMinutes < 3) {
-            progressValue = 50;
+            progressValue = 40 + (pollingCountRef.current * 1); 
             timeMessage = 'Estimated time: 4-5 minutes';
           } else if (elapsedMinutes < 5) {
-            progressValue = 70;
+            progressValue = 60 + Math.min((pollingCountRef.current * 0.5), 10); // Slower increments
             timeMessage = 'Estimated time: 2-3 minutes';
           } else {
             progressValue = 85;
             timeMessage = 'Almost done';
           }
           
-          // Never go backwards in progress
+          // Never go backwards in progress and cap at 95%
+          progressValue = Math.min(95, Math.max(progressValue, lastProgressRef.current));
+          console.log(`Setting progress to ${progressValue}%`);
+          
           if (progressValue > lastProgressRef.current) {
             lastProgressRef.current = progressValue;
             onStatusUpdate(`Processing model. ${timeMessage}`, progressValue);
@@ -100,7 +123,7 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
           cleanupIntervals();
           onStatusUpdate('Model generation complete!', 100);
           
-          toast('Model generated successfully!', {
+          toast.success('Model generated successfully!', {
             description: 'Your 3D model is ready to preview.'
           });
           
@@ -117,22 +140,13 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
         }
       } catch (error: any) {
         console.error('Error checking model status:', error);
-      }
-    };
-    
-    // Function to clean up all intervals and timeouts
-    const cleanupIntervals = () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      if (visualProgressIntervalRef.current) {
-        clearInterval(visualProgressIntervalRef.current);
-        visualProgressIntervalRef.current = null;
-      }
-      if (maxTimeoutRef.current) {
-        clearTimeout(maxTimeoutRef.current);
-        maxTimeoutRef.current = null;
+        
+        // Don't stop polling on error, just log it
+        // But after too many consecutive errors, give up
+        if (pollingCountRef.current > 10) {
+          cleanupIntervals();
+          onError(new Error('Too many errors while checking model status. Please try again.'));
+        }
       }
     };
     
@@ -150,13 +164,14 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
       if (lastProgressRef.current < 90) {
         const smallIncrement = 1;
         lastProgressRef.current += smallIncrement;
+        console.log(`Visual progress update: ${lastProgressRef.current}%`);
         onStatusUpdate('', lastProgressRef.current);
       }
     }, 15000); // Slower visual updates (15s)
     
     // Cleanup function
     return cleanupIntervals;
-  }, [jobId, predictionId, selectedImageUrl, hasError]);
+  }, [jobId, predictionId, selectedImageUrl, hasError, onError, onStatusUpdate, navigate]);
 
   return null; // This is a logic-only component
 };

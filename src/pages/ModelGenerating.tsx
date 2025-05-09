@@ -11,8 +11,8 @@ import { GenerationError } from '@/components/create/GenerationError';
 const ModelGenerating = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [progress, setProgress] = useState(0);
-  const [statusMessage, setStatusMessage] = useState('Starting process...');
+  const [progress, setProgress] = useState(10); // Initialize with 10% to show something is happening
+  const [statusMessage, setStatusMessage] = useState('Initializing model generation...');
   const [predictionId, setPredictionId] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,6 +23,8 @@ const ModelGenerating = () => {
   
   // Handle status updates from child components
   const handleStatusUpdate = (message: string, newProgress: number) => {
+    console.log(`Status update: ${message}, Progress: ${newProgress}`);
+    
     if (message) {
       setStatusMessage(message);
     }
@@ -32,12 +34,15 @@ const ModelGenerating = () => {
       setProgress(prevProgress => {
         // Only auto-increment progress if we're below 95% and we don't have an error
         if (!hasError && prevProgress < 95) {
-          return prevProgress + 1;
+          const newValue = prevProgress + 1;
+          console.log(`Auto-incrementing progress from ${prevProgress} to ${newValue}`);
+          return newValue;
         }
         return prevProgress;
       });
     } else if (newProgress > 0) {
       // Only update progress if it's a valid value
+      console.log(`Setting direct progress value: ${newProgress}`);
       setProgress(newProgress);
     }
   };
