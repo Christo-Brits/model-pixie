@@ -35,7 +35,10 @@ const ImageSelection = () => {
     const fetchJobDetails = async () => {
       try {
         setLoading(true);
+        console.log(`Fetching job details for job: ${jobId}`);
+        
         const status = await checkJobStatus(jobId);
+        console.log(`Job status response:`, status);
         
         if (status.status !== 'images_ready') {
           toast({
@@ -59,7 +62,22 @@ const ImageSelection = () => {
           .single();
           
         if (error || !jobData) {
+          console.error('Error fetching job details:', error);
           throw new Error('Failed to load job details');
+        }
+        
+        console.log('Full job data:', jobData);
+        
+        // Ensure we have image variations
+        if (!jobData.image_variations || !Array.isArray(jobData.image_variations) || jobData.image_variations.length === 0) {
+          console.error('No image variations found in job data');
+          toast({
+            title: 'No images found',
+            description: 'No image variations were found for this job. Please try again.',
+            variant: 'destructive'
+          });
+          navigate('/create');
+          return;
         }
         
         setJob(jobData as Job);
@@ -80,6 +98,20 @@ const ImageSelection = () => {
   }, [jobId, navigate]);
 
   const handleVariationSelected = (variationId: number, imageUrl: string) => {
+    console.log(`Variation selected: ID ${variationId}, URL: ${imageUrl}`);
+    
+    if (!imageUrl) {
+      toast({
+        title: 'Error',
+        description: 'The selected image URL is invalid. Please try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Store the selected image URL in localStorage for fallback
+    localStorage.setItem('selectedImageUrl', imageUrl);
+    
     // Update job status to generating the 3D model
     navigate('/generating', { 
       state: { 
@@ -110,15 +142,26 @@ const ImageSelection = () => {
       <main className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full">
         <h1 className="text-2xl font-bold mb-6">Choose Your Image</h1>
         
-        {job && job.image_variations ? (
-          <ImageVariationSelector
-            jobId={jobId}
-            variations={job.image_variations}
-            onVariationSelected={handleVariationSelected}
-          />
+        {job && job.image_variations && job.image_variations.length > 0 ? (
+          <>
+            <p className="text-muted-foreground mb-6">
+              Select one of these generated images to create your 3D model
+            </p>
+            <ImageVariationSelector
+              jobId={jobId}
+              variations={job.image_variations}
+              onVariationSelected={handleVariationSelected}
+            />
+          </>
         ) : (
-          <div className="text-center py-10">
-            <p>No image variations found. Please try generating images again.</p>
+          <div className="text-center py-10 border border-dashed border-gray-300 rounded-lg">
+            <p className="mb-4">No image variations found. Please try generating images again.</p>
+            <button 
+              onClick={() => navigate('/create')}
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            >
+              Back to Create
+            </button>
           </div>
         )}
       </main>

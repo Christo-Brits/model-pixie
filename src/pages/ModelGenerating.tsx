@@ -11,26 +11,28 @@ import { GenerationError } from '@/components/create/GenerationError';
 const ModelGenerating = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [progress, setProgress] = useState(10); // Initialize with 10% to show something is happening
+  const [progress, setProgress] = useState(10);
   const [statusMessage, setStatusMessage] = useState('Initializing model generation...');
   const [predictionId, setPredictionId] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Extract jobId and selected image info from location state or fallback
   const jobId = location.state?.jobId || localStorage.getItem('currentJobId');
   
-  // Get image URL from various possible locations in the state with improved fallbacks
+  // Get image URL with fallbacks
   const selectedImageUrl = 
     location.state?.selectedImageUrl || 
+    localStorage.getItem('selectedImageUrl') ||
     (location.state?.selectedVariationId && location.state?.imageVariations ? 
       location.state.imageVariations.find(v => v.id === location.state.selectedVariationId)?.url : 
-      null) ||
-    location.state?.imageUrl;
+      null);
   
   // Log state information for debugging
   console.log('ModelGenerating - Selected Image URL:', selectedImageUrl);
   console.log('ModelGenerating - Location state:', location.state);
+  console.log('ModelGenerating - JobId:', jobId);
   
   // Check if we have the necessary data on component mount
   useEffect(() => {
@@ -42,9 +44,11 @@ const ModelGenerating = () => {
       return;
     }
     
-    // If we don't have an image URL, redirect to image selection
-    if (!selectedImageUrl && !hasError) {
+    // If we don't have an image URL and we're not already handling an error
+    if (!selectedImageUrl && !hasError && !isRedirecting) {
       console.log('No image selected, redirecting to image selection');
+      setIsRedirecting(true);
+      
       toast.error("No image selected", {
         description: 'Please select an image for model generation'
       });
@@ -54,7 +58,7 @@ const ModelGenerating = () => {
         navigate('/select-image', { state: { jobId } });
       }, 1000);
     }
-  }, [jobId, selectedImageUrl, navigate, hasError]);
+  }, [jobId, selectedImageUrl, navigate, hasError, isRedirecting]);
   
   // Handle status updates from child components
   const handleStatusUpdate = (message: string, newProgress: number) => {
@@ -104,6 +108,11 @@ const ModelGenerating = () => {
   const handlePredictionIdSet = (id: string | null) => {
     console.log(`Setting prediction ID: ${id}`);
     setPredictionId(id);
+    
+    // Store predictionId in localStorage for potential recovery
+    if (id) {
+      localStorage.setItem('currentPredictionId', id);
+    }
   };
   
   const handleCancel = async () => {
@@ -141,14 +150,21 @@ const ModelGenerating = () => {
     }
   };
   
-  // Don't render the generation components if we're missing essential data
-  if (!jobId) {
+  // Don't render the generation components if we're missing essential data or redirecting
+  if (!jobId || isRedirecting) {
     return null;
   }
   
   return (
     <>
-      {!hasError && selectedImageUrl && (
+      {hasError && errorMessage ? (
+        <GenerationError 
+          error={errorMessage}
+          details="The model generation process encountered an error. This could be due to server issues or problems with the input image."
+          onRetry={handleRetry}
+          onGoBack={handleGoBack}
+        />
+      ) : selectedImageUrl && !predictionId ? (
         <ModelGenerationProcess 
           jobId={jobId}
           selectedImageUrl={selectedImageUrl}
@@ -156,7 +172,7 @@ const ModelGenerating = () => {
           onError={handleError}
           onPredictionIdSet={handlePredictionIdSet}
         />
-      )}
+      ) : null}
       
       {!hasError && predictionId && selectedImageUrl && (
         <ModelStatusChecker
@@ -166,15 +182,6 @@ const ModelGenerating = () => {
           hasError={hasError}
           onStatusUpdate={handleStatusUpdate}
           onError={handleError}
-        />
-      )}
-      
-      {hasError && errorMessage && (
-        <GenerationError 
-          error={errorMessage}
-          details="The model generation process encountered an error. This could be due to server issues or problems with the input image."
-          onRetry={handleRetry}
-          onGoBack={handleGoBack}
         />
       )}
       

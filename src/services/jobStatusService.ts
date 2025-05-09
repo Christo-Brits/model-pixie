@@ -1,43 +1,65 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to check job status
 export const checkJobStatus = async (jobId: string) => {
   try {
-    // Try to use the Edge Function for job status
-    // Note: We're using GET method properly now
-    const { data, error } = await supabase.functions.invoke(
-      'job-status',
-      {
-        body: { jobId },
+    console.log(`Checking job status for job: ${jobId}`);
+    
+    try {
+      // Try to use the Edge Function for job status
+      const { data, error } = await supabase.functions.invoke(
+        'job-status',
+        {
+          method: 'GET',
+          body: { jobId },
+        }
+      );
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to check job status');
       }
-    );
-
-    if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message || 'Failed to check job status');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error checking job status:', error);
-    
-    // Fallback: Direct database query
-    console.log('Falling back to direct database query for job status');
-    const { data, error: dbError } = await supabase
-      .from('jobs')
-      .select('status, image_url, model_url, iterations')
-      .eq('id', jobId)
-      .single();
       
-    if (dbError) throw dbError;
-    
-    return {
-      status: data?.status || 'unknown',
-      imageUrl: data?.image_url,
-      modelUrl: data?.model_url,
-      iterations: data?.iterations || 0
-    };
+      console.log('Edge function job status response:', data);
+      return data;
+    } catch (error) {
+      console.error('Error checking job status:', error);
+      
+      // Fallback: Direct database query
+      console.log('Falling back to direct database query for job status');
+      const { data, error: dbError } = await supabase
+        .from('jobs')
+        .select('status, image_url, model_url, iterations, image_variations')
+        .eq('id', jobId)
+        .maybeSingle();
+        
+      if (dbError) {
+        console.error('Database query error:', dbError);
+        throw dbError;
+      }
+      
+      if (!data) {
+        console.warn(`No data found for job ${jobId}`);
+        return {
+          status: 'unknown',
+          imageUrl: null,
+          modelUrl: null,
+          iterations: 0,
+          imageVariations: []
+        };
+      }
+      
+      return {
+        status: data?.status || 'unknown',
+        imageUrl: data?.image_url,
+        modelUrl: data?.model_url,
+        iterations: data?.iterations || 0,
+        imageVariations: data?.image_variations
+      };
+    }
+  } catch (finalError) {
+    console.error('Final error in checkJobStatus:', finalError);
+    throw finalError;
   }
 };
 
