@@ -17,6 +17,9 @@ serve(async (req) => {
     const config = getEdgeFunctionConfig();
     const meshyApiKey = Deno.env.get('MESHY_API_KEY');
     
+    console.log("Meshy API Key present:", !!meshyApiKey);
+    console.log("Meshy API Key first 4 chars:", meshyApiKey ? meshyApiKey.substring(0, 4) : "None");
+    
     if (!meshyApiKey) {
       console.error('MESHY_API_KEY is not configured in environment variables');
       return new Response(
@@ -30,6 +33,9 @@ serve(async (req) => {
     
     // Parse the request body
     const { jobId, imageUrl } = await req.json();
+    
+    console.log(`Generate model request for job ${jobId} with image URL:`, 
+      imageUrl ? `${imageUrl.substring(0, 50)}...` : "No image URL");
     
     // Input validation
     if (!jobId) {
@@ -48,6 +54,7 @@ serve(async (req) => {
     
     // Validate URL format
     if (!isValidURL(imageUrl)) {
+      console.error(`Invalid image URL format: ${imageUrl}`);
       return new Response(
         JSON.stringify({ error: 'Invalid imageUrl format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,12 +95,19 @@ serve(async (req) => {
     
     try {
       console.log(`Starting 3D model generation using Meshy AI for job ${jobId}`);
-      console.log(`Using Meshy API key (first 4 chars): ${meshyApiKey.substring(0, 4)}...`);
       
       // Prepare Meshy API request with proper error handling
       try {
         // Call Meshy AI API to initiate 3D model generation
-        console.log('Sending request to Meshy API at https://api.meshy.ai/v1/image-to-3d');
+        console.log('Sending request to Meshy API at https://api.meshy.ai/v1/image-to-3d with image URL:', 
+          imageUrl.substring(0, 50) + "...");
+          
+        console.log('Request payload:', JSON.stringify({
+          image_url: imageUrl,
+          generation_type: "mesh",
+          output_format: "stl"
+        }));
+        
         const meshyResponse = await fetch('https://api.meshy.ai/v1/image-to-3d', {
           method: 'POST',
           headers: {
@@ -110,20 +124,31 @@ serve(async (req) => {
         console.log(`Meshy API response status: ${meshyResponse.status}`);
         
         if (!meshyResponse.ok) {
-          const errorData = await meshyResponse.text();
+          const errorText = await meshyResponse.text();
+          console.error(`Meshy API error response (${meshyResponse.status}):`, errorText);
+          
           let errorMessage = `Meshy API error: ${meshyResponse.status}`;
           try {
-            const errorJson = JSON.parse(errorData);
-            errorMessage += ` - ${errorJson.error || errorJson.message || errorData}`;
+            const errorJson = JSON.parse(errorText);
+            errorMessage += ` - ${errorJson.error || errorJson.message || errorText}`;
           } catch {
-            errorMessage += ` - ${errorData}`;
+            errorMessage += ` - ${errorText}`;
           }
           console.error(errorMessage);
           throw new Error(errorMessage);
         }
         
-        const meshyData = await meshyResponse.json();
-        console.log('Meshy API response:', JSON.stringify(meshyData));
+        const responseText = await meshyResponse.text();
+        console.log("Meshy raw response:", responseText);
+        
+        let meshyData;
+        try {
+          meshyData = JSON.parse(responseText);
+          console.log('Meshy API parsed response:', JSON.stringify(meshyData));
+        } catch (e) {
+          console.error("Failed to parse Meshy API response:", e);
+          throw new Error("Invalid JSON response from Meshy API");
+        }
         
         // We can get either task_id or result as the task identifier
         const taskId = meshyData.task_id || meshyData.result;
