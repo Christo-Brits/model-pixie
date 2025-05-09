@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { generateModel } from '@/services/generationService';
 
 interface ModelGenerationProcessProps {
@@ -33,12 +33,21 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
           
           if (result && result.job) {
             // Set prediction ID for status checking
-            if (result.job.predictionId) {
-              onPredictionIdSet(result.job.predictionId);
+            // We can get the ID from either predictionId or taskId
+            const predictionId = result.job.predictionId || result.job.taskId;
+            
+            if (predictionId) {
+              onPredictionIdSet(predictionId);
               onStatusUpdate(
                 `Model generation in progress. Estimated time: ${result.job.estimatedTime || '5-7 minutes'}`,
                 20
               );
+              
+              // Log the ID we're using
+              console.log(`Model generation started with ID: ${predictionId}`);
+            } else {
+              console.error('No prediction or task ID returned from model generation service');
+              throw new Error('Failed to get tracking ID for model generation');
             }
             
             // If the job completed immediately (unlikely but possible)

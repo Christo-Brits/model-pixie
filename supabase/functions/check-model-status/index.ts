@@ -122,10 +122,25 @@ serve(async (req) => {
     
     const taskData = await meshyStatusResponse.json();
     console.log(`Current Meshy task status: ${taskData.status}`);
+
+    // Handle the case where we have results directly
+    let downloadUrl = null;
     
-    // If model generation is complete
-    if (taskData.status === 'completed' && taskData.result && taskData.result.download_url) {
-      const modelUrl = taskData.result.download_url;
+    // Check for various possible response formats
+    if (taskData.status === 'completed') {
+      // Try to get the download URL from different possible fields
+      downloadUrl = taskData.result?.download_url || 
+                   taskData.results?.stl_url || 
+                   taskData.results?.glb_url ||
+                   taskData.results?.model_url || 
+                   taskData.download_url;
+                    
+      console.log(`Found download URL: ${downloadUrl}`);
+    }
+    
+    // If model generation is complete and we have a download URL
+    if (taskData.status === 'completed' && downloadUrl) {
+      const modelUrl = downloadUrl;
       
       // Download the STL file from Meshy
       const modelResponse = await fetch(modelUrl);

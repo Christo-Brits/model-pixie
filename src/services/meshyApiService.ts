@@ -45,10 +45,18 @@ export const generateMeshyModel = async (imageUrl: string, apiKey: string) => {
 
     // Parse and return the response
     const data = await response.json();
+    
+    // Handle the case where we get a result field instead of task_id
+    const taskId = data.task_id || data.result;
+    
+    if (!taskId) {
+      throw new Error("Meshy API did not return a valid task ID");
+    }
+    
     return {
       success: true,
-      taskId: data.task_id,
-      status: data.status
+      taskId: taskId,
+      status: data.status || 'pending'
     };
   } catch (error) {
     console.error("Meshy model generation error:", error);
@@ -96,12 +104,20 @@ export const checkMeshyModelStatus = async (taskId: string, apiKey: string) => {
 
     // Parse the response
     const data = await response.json();
+    
+    // Handle both result formats
+    const modelUrl = data.results?.glb_url || 
+                    data.results?.model_url || 
+                    data.result?.download_url || 
+                    data.download_url || 
+                    null;
+    
     return {
       success: true,
-      taskId: data.task_id,
+      taskId: data.task_id || taskId,
       status: data.status,
       progress: data.progress,
-      modelUrl: data.results?.glb_url || data.results?.model_url || null,
+      modelUrl: modelUrl,
       error: data.error || null
     };
   } catch (error) {

@@ -125,12 +125,12 @@ serve(async (req) => {
         const meshyData = await meshyResponse.json();
         console.log('Meshy API response:', JSON.stringify(meshyData));
         
-        // We need the taskId for status checking
-        const taskId = meshyData.task_id;
+        // We can get either task_id or result as the task identifier
+        const taskId = meshyData.task_id || meshyData.result;
         
         if (!taskId) {
-          console.error('No task_id in Meshy API response:', meshyData);
-          throw new Error('Meshy API did not return a task_id');
+          console.error('No task identifier in Meshy API response:', meshyData);
+          throw new Error('Meshy API did not return a valid task identifier');
         }
         
         console.log(`Meshy AI task initiated with ID: ${taskId}`);
@@ -185,7 +185,8 @@ serve(async (req) => {
               id: job.id,
               status: 'rendering',
               estimatedTime: '1-3 minutes',
-              taskId: taskId
+              taskId: taskId,
+              predictionId: taskId // Include as predictionId for compatibility
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
