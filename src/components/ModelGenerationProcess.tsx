@@ -29,6 +29,10 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
 
     const startModelGeneration = async () => {
       try {
+        // Update UI with initial status
+        onStatusUpdate('Checking image availability...', 10);
+        console.log(`ModelGenerationProcess - Selected Image URL: ${selectedImageUrl}`);
+        
         // If we have a selected image URL from the image selection page
         if (selectedImageUrl) {
           setHasInitiated(true);
@@ -81,7 +85,8 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
             }
           }
         } else {
-          throw new Error('No image selected for model generation');
+          console.error('No image selected for model generation');
+          throw new Error('No image selected for model generation. Please go back and select an image.');
         }
       } catch (error: any) {
         console.error('Failed to start model generation:', error);
@@ -92,7 +97,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
     startModelGeneration();
     // We only want to run this effect once when the component mounts
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedImageUrl]);
 
   return null; // This is a logic-only component
 };

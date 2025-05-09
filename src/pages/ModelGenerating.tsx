@@ -19,7 +19,16 @@ const ModelGenerating = () => {
   
   // Extract jobId and selected image info from location state or fallback
   const jobId = location.state?.jobId || localStorage.getItem('currentJobId');
-  const selectedImageUrl = location.state?.selectedImageUrl;
+  
+  // Get image URL from various possible locations in the state
+  const selectedImageUrl = 
+    location.state?.selectedImageUrl || 
+    (location.state?.selectedVariationId && location.state?.imageVariations ? 
+      location.state.imageVariations.find(v => v.id === location.state.selectedVariationId)?.url : 
+      null);
+  
+  console.log('ModelGenerating - Selected Image URL:', selectedImageUrl);
+  console.log('ModelGenerating - Location state:', location.state);
   
   // Handle status updates from child components
   const handleStatusUpdate = (message: string, newProgress: number) => {
@@ -91,6 +100,19 @@ const ModelGenerating = () => {
     });
     navigate('/create');
     return null;
+  }
+  
+  // If we don't have an image URL, try to redirect to image selection
+  if (!selectedImageUrl && !hasError) {
+    console.log('No image selected, redirecting to image selection');
+    toast.error('No image selected', {
+      description: 'Please select an image for model generation'
+    });
+    
+    // Redirect to image selection if possible
+    setTimeout(() => {
+      navigate('/select-image', { state: { jobId } });
+    }, 1000);
   }
   
   return (
