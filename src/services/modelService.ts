@@ -8,4 +8,5 @@ export * from './modelGenerationService';
 export * from './refinementService';
 export * from './testCreditService';
 export * from './feedbackService';
+export * from './meshyApiService';
 export * from '@/types/job';

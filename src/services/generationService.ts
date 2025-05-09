@@ -4,3 +4,4 @@ export * from './imageGenerationService';
 export * from './modelGenerationService';
 export * from './refinementService';
 export * from './testCreditService';
+export * from './meshyApiService';
