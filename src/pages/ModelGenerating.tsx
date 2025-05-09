@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ModelGenerationLoading } from '@/components/ModelGenerationLoading';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { updateJobStatus } from '@/services/jobStatusService';
 import { ModelGenerationProcess } from '@/components/ModelGenerationProcess';
 import { ModelStatusChecker } from '@/components/ModelStatusChecker';
+import { GenerationError } from '@/components/create/GenerationError';
 
 const ModelGenerating = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const ModelGenerating = () => {
   const [statusMessage, setStatusMessage] = useState('Starting process...');
   const [predictionId, setPredictionId] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Extract jobId and selected image info from location state or fallback
   const jobId = location.state?.jobId || localStorage.getItem('currentJobId');
@@ -34,7 +36,8 @@ const ModelGenerating = () => {
         }
         return prevProgress;
       });
-    } else {
+    } else if (newProgress > 0) {
+      // Only update progress if it's a valid value
       setProgress(newProgress);
     }
   };
@@ -42,11 +45,11 @@ const ModelGenerating = () => {
   // Handle errors from child components
   const handleError = async (error: Error) => {
     setHasError(true);
+    setErrorMessage(error.message || 'Unknown error occurred');
     setStatusMessage(`Generation error: ${error.message || 'Unknown error'}`);
     
-    toast({
-      title: 'Generation Error',
-      description: error.message || 'Failed to start model generation. The Replicate API key may not be configured.',
+    toast('Generation Error', {
+      description: error.message || 'Failed to start model generation',
       variant: 'destructive'
     });
     
@@ -60,6 +63,7 @@ const ModelGenerating = () => {
   
   // Handle prediction ID update
   const handlePredictionIdSet = (id: string | null) => {
+    console.log(`Setting prediction ID: ${id}`);
     setPredictionId(id);
   };
   
@@ -68,8 +72,7 @@ const ModelGenerating = () => {
       // Update job status to cancelled
       await updateJobStatus(jobId, 'cancelled');
       
-      toast({
-        title: 'Generation cancelled',
+      toast('Generation cancelled', {
         description: 'Your credit has been returned to your account.',
       });
       navigate('/create');
@@ -79,8 +82,7 @@ const ModelGenerating = () => {
   };
   
   if (!jobId) {
-    toast({
-      title: 'Error',
+    toast('Error', {
       description: 'No job ID found. Unable to track progress.',
       variant: 'destructive'
     });
@@ -90,22 +92,34 @@ const ModelGenerating = () => {
   
   return (
     <>
-      <ModelGenerationProcess 
-        jobId={jobId}
-        selectedImageUrl={selectedImageUrl}
-        onStatusUpdate={handleStatusUpdate}
-        onError={handleError}
-        onPredictionIdSet={handlePredictionIdSet}
-      />
+      {!hasError && (
+        <ModelGenerationProcess 
+          jobId={jobId}
+          selectedImageUrl={selectedImageUrl}
+          onStatusUpdate={handleStatusUpdate}
+          onError={handleError}
+          onPredictionIdSet={handlePredictionIdSet}
+        />
+      )}
       
-      <ModelStatusChecker
-        jobId={jobId}
-        predictionId={predictionId}
-        selectedImageUrl={selectedImageUrl}
-        hasError={hasError}
-        onStatusUpdate={handleStatusUpdate}
-        onError={handleError}
-      />
+      {!hasError && predictionId && (
+        <ModelStatusChecker
+          jobId={jobId}
+          predictionId={predictionId}
+          selectedImageUrl={selectedImageUrl}
+          hasError={hasError}
+          onStatusUpdate={handleStatusUpdate}
+          onError={handleError}
+        />
+      )}
+      
+      {hasError && errorMessage && (
+        <GenerationError 
+          error={errorMessage}
+          details="The model generation process encountered an error. This could be due to server issues or problems with the input image."
+          onRetry={() => window.location.reload()}
+        />
+      )}
       
       <ModelGenerationLoading 
         progress={progress} 

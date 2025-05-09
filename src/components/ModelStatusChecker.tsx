@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { checkModelGenerationStatus } from '@/services/generationService';
 
 interface ModelStatusCheckerProps {
@@ -21,38 +22,86 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
   onError
 }) => {
   const navigate = useNavigate();
+  const pollingIntervalRef = useRef<number | null>(null);
+  const visualProgressIntervalRef = useRef<number | null>(null);
+  const lastProgressRef = useRef<number>(0);
+  const processingStartTimeRef = useRef<number | null>(null);
+  const maxTimeoutRef = useRef<number | null>(null);
   
   useEffect(() => {
-    if (hasError) return;
+    // Setup max timeout to prevent infinite waiting
+    if (!maxTimeoutRef.current) {
+      // Set max timeout to 15 minutes (900000ms)
+      maxTimeoutRef.current = window.setTimeout(() => {
+        console.warn('Maximum generation time exceeded (15 minutes)');
+        onError(new Error('Generation is taking too long. Please try again later.'));
+        cleanupIntervals();
+      }, 900000);
+    }
     
-    let pollingInterval: number | null = null;
-    let visualProgressInterval: number | null = null;
+    // Don't poll if there's an error or no predictionId
+    if (hasError || !predictionId) return;
+
+    // Start tracking processing time
+    if (!processingStartTimeRef.current) {
+      processingStartTimeRef.current = Date.now();
+    }
+    
+    // Only setup polling once
+    if (pollingIntervalRef.current) return;
     
     const checkModelStatus = async () => {
       try {
-        // Skip status check if there's already an error
         if (hasError) return;
-        
-        // Use job status polling if no prediction ID is available
         if (!predictionId) {
+          console.log('No prediction ID available yet, skipping status check');
           return;
         }
         
+        console.log(`Checking status for model with job ID: ${jobId}, prediction ID: ${predictionId}`);
+        
         // Check status using the prediction ID
         const status = await checkModelGenerationStatus(jobId);
+        console.log("Model status check returned:", status);
         
-        // Update status message and progress
         if (status.status === 'processing' || status.status === 'starting') {
-          const progressValue = status.progress ? Math.round(status.progress * 100) : 
-                              status.status === 'processing' ? 50 : 20;
-          onStatusUpdate(`Processing model. ${status.estimatedTimeRemaining || 'Please wait...'}`, progressValue);
+          // Calculate how long we've been processing
+          const elapsedMinutes = processingStartTimeRef.current ? 
+            (Date.now() - processingStartTimeRef.current) / 60000 : 0;
+          
+          // Set progress based on time elapsed
+          let progressValue;
+          let timeMessage;
+          
+          if (status.progress) {
+            // If API provides progress, use it
+            progressValue = Math.round(status.progress * 100);
+            timeMessage = status.estimatedTimeRemaining || 'Processing...';
+          } else if (elapsedMinutes < 1) {
+            progressValue = 25;
+            timeMessage = 'Estimated time: 5-7 minutes';
+          } else if (elapsedMinutes < 3) {
+            progressValue = 50;
+            timeMessage = 'Estimated time: 4-5 minutes';
+          } else if (elapsedMinutes < 5) {
+            progressValue = 70;
+            timeMessage = 'Estimated time: 2-3 minutes';
+          } else {
+            progressValue = 85;
+            timeMessage = 'Almost done';
+          }
+          
+          // Never go backwards in progress
+          if (progressValue > lastProgressRef.current) {
+            lastProgressRef.current = progressValue;
+            onStatusUpdate(`Processing model. ${timeMessage}`, progressValue);
+          }
         } else if (status.status === 'succeeded' || status.status === 'completed') {
+          cleanupIntervals();
           onStatusUpdate('Model generation complete!', 100);
           
-          // Navigate to preview page
-          toast({
-            title: 'Model generated successfully!',
-            description: 'Your 3D model is ready to preview.',
+          toast('Model generated successfully!', {
+            description: 'Your 3D model is ready to preview.'
           });
           
           navigate('/preview', { 
@@ -62,22 +111,28 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
               imageUrl: selectedImageUrl 
             } 
           });
-          
-          // Clear polling interval
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-          }
         } else if (status.status === 'failed' || status.status === 'error') {
+          cleanupIntervals();
           onError(new Error(status.error || 'There was a problem generating your model.'));
-          
-          // Clear polling interval
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-          }
         }
       } catch (error: any) {
         console.error('Error checking model status:', error);
-        // Don't clear interval on error, just keep trying
+      }
+    };
+    
+    // Function to clean up all intervals and timeouts
+    const cleanupIntervals = () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (visualProgressIntervalRef.current) {
+        clearInterval(visualProgressIntervalRef.current);
+        visualProgressIntervalRef.current = null;
+      }
+      if (maxTimeoutRef.current) {
+        clearTimeout(maxTimeoutRef.current);
+        maxTimeoutRef.current = null;
       }
     };
     
@@ -85,24 +140,22 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
     checkModelStatus();
       
     // Then poll every 10 seconds
-    pollingInterval = window.setInterval(checkModelStatus, 10000);
+    pollingIntervalRef.current = window.setInterval(checkModelStatus, 10000);
     
-    // Set up progressive visual progress indicators
-    visualProgressInterval = window.setInterval(() => {
-      if (!hasError) {
-        onStatusUpdate('', -1); // Signal to increment progress
+    // Setup visual progress indicator - only increment gradually for visual feedback
+    visualProgressIntervalRef.current = window.setInterval(() => {
+      if (hasError) return;
+      
+      // Only increment progress if we're below 90%
+      if (lastProgressRef.current < 90) {
+        const smallIncrement = 1;
+        lastProgressRef.current += smallIncrement;
+        onStatusUpdate('', lastProgressRef.current);
       }
-    }, 5000);
+    }, 15000); // Slower visual updates (15s)
     
     // Cleanup function
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-      if (visualProgressInterval) {
-        clearInterval(visualProgressInterval);
-      }
-    };
+    return cleanupIntervals;
   }, [jobId, predictionId, selectedImageUrl, hasError]);
 
   return null; // This is a logic-only component

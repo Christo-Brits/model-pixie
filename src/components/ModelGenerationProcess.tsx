@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { generateModel } from '@/services/generationService';
+import { GenerationError } from '@/components/create/GenerationError';
 
 interface ModelGenerationProcessProps {
   jobId: string;
@@ -20,31 +21,35 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
   onPredictionIdSet
 }) => {
   const navigate = useNavigate();
+  const [hasInitiated, setHasInitiated] = useState(false);
   
   useEffect(() => {
+    // Prevent multiple initiations
+    if (hasInitiated) return;
+
     const startModelGeneration = async () => {
       try {
         // If we have a selected image URL from the image selection page
         if (selectedImageUrl) {
+          setHasInitiated(true);
           onStatusUpdate('Starting 3D model generation...', 10);
+          
+          console.log(`Initiating model generation for job ${jobId} with image: ${selectedImageUrl}`);
           
           // Call the generate model function with the selected image
           const result = await generateModel(jobId, selectedImageUrl);
           
           if (result && result.job) {
-            // Set prediction ID for status checking
-            // We can get the ID from either predictionId or taskId
+            // Get the prediction ID for status checking
             const predictionId = result.job.predictionId || result.job.taskId;
             
             if (predictionId) {
+              console.log(`Model generation initiated with prediction ID: ${predictionId}`);
               onPredictionIdSet(predictionId);
               onStatusUpdate(
                 `Model generation in progress. Estimated time: ${result.job.estimatedTime || '5-7 minutes'}`,
                 20
               );
-              
-              // Log the ID we're using
-              console.log(`Model generation started with ID: ${predictionId}`);
             } else {
               console.error('No prediction or task ID returned from model generation service');
               throw new Error('Failed to get tracking ID for model generation');
@@ -65,7 +70,6 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
                   imageUrl: selectedImageUrl 
                 } 
               });
-              return;
             }
           }
         }
