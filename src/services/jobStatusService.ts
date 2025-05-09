@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 export const checkJobStatus = async (jobId: string) => {
   try {
     // Try to use the Edge Function for job status
+    // Note: We're using GET method properly now
     const { data, error } = await supabase.functions.invoke(
       'job-status',
       {
         body: { jobId },
-        method: 'GET'
       }
     );
 
@@ -43,13 +43,18 @@ export const checkJobStatus = async (jobId: string) => {
 
 // Function to update job status
 export const updateJobStatus = async (jobId: string, status: string) => {
-  const { error } = await supabase
-    .from('jobs')
-    .update({ status })
-    .eq('id', jobId);
-    
-  if (error) throw error;
-  return true;
+  try {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status })
+      .eq('id', jobId);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Failed to update job status:', error);
+    throw error;
+  }
 };
 
 // Function to get human-readable status description

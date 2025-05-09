@@ -26,7 +26,13 @@ export const GenerationError: React.FC<GenerationErrorProps> = ({
   // Check if error is related to server/connection issues
   const isConnectionError = error.toLowerCase().includes('connection') || 
                            error.toLowerCase().includes('network') ||
-                           error.toLowerCase().includes('failed to fetch');
+                           error.toLowerCase().includes('failed to fetch') ||
+                           error.toLowerCase().includes('edge function');
+  
+  // Check if error is related to missing image
+  const isImageError = error.toLowerCase().includes('no image') ||
+                      error.toLowerCase().includes('image not found') ||
+                      error.toLowerCase().includes('select an image');
   
   return (
     <div className="mb-6 p-4 border border-destructive/30 bg-destructive/10 rounded-lg flex items-start gap-3">
@@ -46,6 +52,13 @@ export const GenerationError: React.FC<GenerationErrorProps> = ({
           <p className="mt-2 text-xs text-destructive/70">
             There might be an issue with your internet connection or our service.
             Please check your connection and try again.
+          </p>
+        )}
+        
+        {isImageError && (
+          <p className="mt-2 text-xs text-destructive/70">
+            You need to select an image before generating a 3D model.
+            Please go back to image selection and choose an image.
           </p>
         )}
         

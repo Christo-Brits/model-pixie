@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ModelGenerationLoading } from '@/components/ModelGenerationLoading';
 import { toast } from '@/components/ui/sonner';
@@ -20,15 +20,41 @@ const ModelGenerating = () => {
   // Extract jobId and selected image info from location state or fallback
   const jobId = location.state?.jobId || localStorage.getItem('currentJobId');
   
-  // Get image URL from various possible locations in the state
+  // Get image URL from various possible locations in the state with improved fallbacks
   const selectedImageUrl = 
     location.state?.selectedImageUrl || 
     (location.state?.selectedVariationId && location.state?.imageVariations ? 
       location.state.imageVariations.find(v => v.id === location.state.selectedVariationId)?.url : 
-      null);
+      null) ||
+    location.state?.imageUrl;
   
+  // Log state information for debugging
   console.log('ModelGenerating - Selected Image URL:', selectedImageUrl);
   console.log('ModelGenerating - Location state:', location.state);
+  
+  // Check if we have the necessary data on component mount
+  useEffect(() => {
+    if (!jobId) {
+      toast.error("Error", {
+        description: 'No job ID found. Unable to track progress.'
+      });
+      navigate('/create');
+      return;
+    }
+    
+    // If we don't have an image URL, redirect to image selection
+    if (!selectedImageUrl && !hasError) {
+      console.log('No image selected, redirecting to image selection');
+      toast.error("No image selected", {
+        description: 'Please select an image for model generation'
+      });
+      
+      // Use setTimeout to ensure the toast is displayed before redirecting
+      setTimeout(() => {
+        navigate('/select-image', { state: { jobId } });
+      }, 1000);
+    }
+  }, [jobId, selectedImageUrl, navigate, hasError]);
   
   // Handle status updates from child components
   const handleStatusUpdate = (message: string, newProgress: number) => {
@@ -62,7 +88,7 @@ const ModelGenerating = () => {
     setErrorMessage(error.message || 'Unknown error occurred');
     setStatusMessage(`Generation error: ${error.message || 'Unknown error'}`);
     
-    toast.error('Generation Error', {
+    toast.error("Generation Error", {
       description: error.message || 'Failed to start model generation'
     });
     
@@ -107,34 +133,22 @@ const ModelGenerating = () => {
   };
   
   const handleGoBack = () => {
-    // Go back to create page
-    navigate('/create');
+    // Go back to create page or image selection page depending on the error
+    if (errorMessage && errorMessage.toLowerCase().includes('no image')) {
+      navigate('/select-image', { state: { jobId } });
+    } else {
+      navigate('/create');
+    }
   };
   
+  // Don't render the generation components if we're missing essential data
   if (!jobId) {
-    toast.error('Error', {
-      description: 'No job ID found. Unable to track progress.'
-    });
-    navigate('/create');
     return null;
-  }
-  
-  // If we don't have an image URL, try to redirect to image selection
-  if (!selectedImageUrl && !hasError) {
-    console.log('No image selected, redirecting to image selection');
-    toast.error('No image selected', {
-      description: 'Please select an image for model generation'
-    });
-    
-    // Redirect to image selection if possible
-    setTimeout(() => {
-      navigate('/select-image', { state: { jobId } });
-    }, 1000);
   }
   
   return (
     <>
-      {!hasError && (
+      {!hasError && selectedImageUrl && (
         <ModelGenerationProcess 
           jobId={jobId}
           selectedImageUrl={selectedImageUrl}
@@ -144,7 +158,7 @@ const ModelGenerating = () => {
         />
       )}
       
-      {!hasError && predictionId && (
+      {!hasError && predictionId && selectedImageUrl && (
         <ModelStatusChecker
           jobId={jobId}
           predictionId={predictionId}

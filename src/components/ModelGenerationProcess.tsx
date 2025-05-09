@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { generateModel } from '@/services/generationService';
-import { GenerationError } from '@/components/create/GenerationError';
 
 interface ModelGenerationProcessProps {
   jobId: string;
@@ -38,7 +37,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
           setHasInitiated(true);
           
           // Send initial status updates
-          onStatusUpdate('Starting 3D model generation...', 10);
+          onStatusUpdate('Starting 3D model generation...', 15);
           
           console.log(`Initiating model generation for job ${jobId} with image: ${selectedImageUrl}`);
           
@@ -46,7 +45,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
           await new Promise(resolve => setTimeout(resolve, 500));
           
           // Update progress to show activity
-          onStatusUpdate('Preparing to generate model...', 15);
+          onStatusUpdate('Preparing to generate model...', 20);
           
           // Call the generate model function with the selected image
           const result = await generateModel(jobId, selectedImageUrl);
@@ -60,7 +59,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
               onPredictionIdSet(predictionId);
               onStatusUpdate(
                 `Model generation in progress. Estimated time: ${result.job.estimatedTime || '5-7 minutes'}`,
-                20
+                25
               );
             } else {
               console.error('No prediction or task ID returned from model generation service');
