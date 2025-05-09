@@ -14,6 +14,13 @@ interface ModelGenerationProcessProps {
   onPredictionIdSet: (predictionId: string | null) => void;
 }
 
+// Define interfaces to match the expected JSON structure from Supabase
+interface ImageVariation {
+  id?: number;
+  url: string;
+  selected?: boolean;
+}
+
 export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
   jobId,
   selectedImageUrl,
@@ -61,15 +68,24 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
             if (data?.image_url) {
               imageUrl = data.image_url;
               console.log(`Retrieved image URL from job data: ${imageUrl}`);
-            } else if (data?.image_variations && Array.isArray(data.image_variations) && data.image_variations.length > 0) {
-              // Find selected variation or use first one
-              const selectedVariation = data.image_variations.find(v => v.selected === true);
-              if (selectedVariation) {
-                imageUrl = selectedVariation.url;
-              } else {
-                imageUrl = data.image_variations[0].url;
+            } else if (data?.image_variations) {
+              // Safely handle potential different types of image_variations
+              const variations = data.image_variations as unknown;
+              
+              // Check if it's an array
+              if (Array.isArray(variations) && variations.length > 0) {
+                // Find selected variation or use first one
+                const selectedVariation = variations.find(
+                  (v: any) => v && typeof v === 'object' && v.selected === true
+                ) as ImageVariation | undefined;
+                
+                if (selectedVariation && selectedVariation.url) {
+                  imageUrl = selectedVariation.url;
+                } else if (variations[0] && typeof variations[0] === 'object' && 'url' in variations[0]) {
+                  imageUrl = (variations[0] as ImageVariation).url;
+                }
+                console.log(`Retrieved image URL from job variations: ${imageUrl}`);
               }
-              console.log(`Retrieved image URL from job variations: ${imageUrl}`);
             }
           } catch (error) {
             console.error('Error retrieving job data:', error);
