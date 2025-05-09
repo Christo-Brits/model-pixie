@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/sonner';
 
+/**
+ * Custom hook for managing user credits - refactored for better maintainability
+ */
 export function useCredits() {
   const { user } = useAuth();
   const [credits, setCredits] = useState<number>(0);
@@ -63,45 +66,26 @@ export function useCredits() {
     
     try {
       // First, get the latest credit count to ensure we have the most up-to-date value
-      const { data: currentData, error: fetchError } = await supabase
-        .from('user_credits')
-        .select('credits')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (fetchError) {
-        throw new Error(`Failed to verify current credit balance: ${fetchError.message}`);
-      }
-      
-      const currentCredits = currentData?.credits || 0;
+      const currentCredits = await getCurrentCreditBalance(user.id);
       
       if (currentCredits < amount) {
-        toast.error('Insufficient credits', {
-          description: 'Your credit balance has changed. Please purchase more credits to continue.',
-        });
+        handleInsufficientCredits();
         await fetchCredits(); // Refresh the displayed credit count
         return false;
       }
       
       // Update the credits in the database
-      const { error: updateError } = await supabase
-        .from('user_credits')
-        .update({ 
-          credits: currentCredits - amount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
+      const success = await updateCreditsInDatabase(user.id, currentCredits, amount);
       
-      if (updateError) {
-        throw new Error(`Failed to update credits: ${updateError.message}`);
+      if (!success) {
+        return false;
       }
       
       // Update local state
       setCredits(currentCredits - amount);
       
-      toast.success(`${amount} credit${amount !== 1 ? 's' : ''} used`, {
-        description: `Your new balance is ${currentCredits - amount} credit${currentCredits - amount !== 1 ? 's' : ''}`,
-      });
+      // Show success toast
+      displaySuccessMessage(amount, currentCredits - amount);
       
       return true;
     } catch (err) {
@@ -113,6 +97,55 @@ export function useCredits() {
     } finally {
       setIsConsuming(false);
     }
+  };
+
+  // Helper function to get current credit balance
+  const getCurrentCreditBalance = async (userId: string): Promise<number> => {
+    const { data, error } = await supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error) {
+      throw new Error(`Failed to verify current credit balance: ${error.message}`);
+    }
+    
+    return data?.credits || 0;
+  };
+
+  // Helper function to handle insufficient credits
+  const handleInsufficientCredits = () => {
+    toast.error('Insufficient credits', {
+      description: 'Your credit balance has changed. Please purchase more credits to continue.',
+    });
+  };
+
+  // Helper function to update credits in the database
+  const updateCreditsInDatabase = async (userId: string, currentCredits: number, amount: number): Promise<boolean> => {
+    const { error } = await supabase
+      .from('user_credits')
+      .update({ 
+        credits: currentCredits - amount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+    
+    if (error) {
+      toast.error('Failed to update credits', {
+        description: error.message || 'An unexpected error occurred',
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Helper function to display success message
+  const displaySuccessMessage = (amount: number, newBalance: number) => {
+    toast.success(`${amount} credit${amount !== 1 ? 's' : ''} used`, {
+      description: `Your new balance is ${newBalance} credit${newBalance !== 1 ? 's' : ''}`,
+    });
   };
 
   // Fetch credits on initial load and when user changes
