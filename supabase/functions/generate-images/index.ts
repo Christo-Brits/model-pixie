@@ -42,15 +42,46 @@ serve(async (req) => {
       
     console.log(`Job ${jobId} status updated to 'generating'. Generating images for prompt: ${prompt}`);
     
-    // Prepare OpenAI API request using dalle-3 model
+    // First, try to enhance the prompt
+    console.log("Calling enhance-prompt function...");
+    let enhancedPrompt = prompt;
+    
+    try {
+      const enhanceResponse = await fetch(`${supabaseUrl}/functions/v1/enhance-prompt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({ prompt })
+      });
+      
+      if (enhanceResponse.ok) {
+        const enhanceData = await enhanceResponse.json();
+        if (enhanceData.enhancedPrompt) {
+          enhancedPrompt = enhanceData.enhancedPrompt;
+          console.log(`Using enhanced prompt: ${enhancedPrompt}`);
+        }
+      } else {
+        console.error("Failed to enhance prompt, using original prompt instead");
+      }
+    } catch (enhanceError) {
+      console.error("Error enhancing prompt:", enhanceError);
+      console.log("Continuing with original prompt");
+    }
+    
+    // Prepare OpenAI API request using dall-e-3 model (GPT-4.1 vision is not actually available)
     let openAIPayload = {
-      model: "dall-e-3", // Using the correct DALL-E 3 model
-      prompt: prompt,
+      model: "dall-e-3", // DALL-E 3 is currently the best available model for this purpose
+      prompt: enhancedPrompt,
       n: 1,  // DALL-E 3 only supports 1 image per request
       size: "1024x1024",
-      quality: "standard",
+      quality: "hd", // Use high quality
       response_format: "url"
     };
+    
+    // Log the API request
+    console.log("Sending request to OpenAI with payload:", JSON.stringify(openAIPayload));
     
     // Call OpenAI API to generate images
     console.log("Calling OpenAI API to generate images...");
@@ -63,12 +94,14 @@ serve(async (req) => {
       body: JSON.stringify(openAIPayload)
     });
     
+    console.log(`OpenAI API response status: ${openAIResponse.status}`);
+    
     if (!openAIResponse.ok) {
       const errorData = await openAIResponse.text();
       console.error("OpenAI API error:", errorData);
       await supabase
         .from('jobs')
-        .update({ status: 'error' })
+        .update({ status: 'error', error_message: errorData })
         .eq('id', jobId);
         
       return new Response(
@@ -80,12 +113,12 @@ serve(async (req) => {
     const imageData = await openAIResponse.json();
     console.log("Images generated successfully");
     
-    // For DALL-E 3, we need to generate multiple images with separate API calls
-    // Let's make 3 more calls to get 4 variations total
+    // Make up to 3 more calls to get 4 variations total
     const additionalImages = [];
     
     for (let i = 0; i < 3; i++) {
       try {
+        console.log(`Generating additional image ${i+1}...`);
         const additionalResponse = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: {
@@ -99,7 +132,10 @@ serve(async (req) => {
           const additionalData = await additionalResponse.json();
           if (additionalData.data && additionalData.data.length > 0) {
             additionalImages.push(additionalData.data[0]);
+            console.log(`Additional image ${i+1} generated successfully`);
           }
+        } else {
+          console.error(`Failed to generate additional image ${i+1}:`, await additionalResponse.text());
         }
       } catch (err) {
         console.error(`Error generating additional image ${i+1}:`, err);
@@ -152,11 +188,12 @@ serve(async (req) => {
       imageVariations.push({
         id: i + 1,
         url: publicUrl,
-        selected: false
+        selected: false,
+        prompt: enhancedPrompt // Store the enhanced prompt with each variation
       });
     }
     
-    // Update job with image URLs and set status to 'images_ready'
+    // Update job with image URLs, enhanced prompt, and set status to 'images_ready'
     if (imageUrls.length > 0) {
       const firstImageUrl = imageUrls[0];
       const { error: updateError } = await supabase
@@ -165,6 +202,8 @@ serve(async (req) => {
           status: 'images_ready',
           image_url: firstImageUrl,  // Store first image as primary
           image_variations: imageVariations,  // Store all variations as JSON
+          enhanced_prompt: enhancedPrompt,    // Store the enhanced prompt
+          original_prompt: prompt              // Store the original prompt
         })
         .eq('id', jobId);
         
@@ -179,7 +218,7 @@ serve(async (req) => {
     } else {
       await supabase
         .from('jobs')
-        .update({ status: 'error' })
+        .update({ status: 'error', error_message: 'No images were successfully uploaded' })
         .eq('id', jobId);
         
       return new Response(
@@ -194,6 +233,7 @@ serve(async (req) => {
         success: true,
         message: 'Images generated successfully',
         images: imageUrls,
+        enhancedPrompt: enhancedPrompt,
         job: {
           id: jobId,
           status: 'images_ready'

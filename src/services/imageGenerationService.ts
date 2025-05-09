@@ -18,7 +18,36 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
     
     while (retries > 0) {
       try {
-        // Try to use the direct fetch approach first
+        // First, enhance the prompt
+        console.log("Attempting to enhance prompt before image generation");
+        let enhancedPrompt = prompt;
+        
+        try {
+          const enhanceResponse = await fetch(
+            'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/enhance-prompt',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+                'apikey': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w"
+              },
+              body: JSON.stringify({ prompt })
+            }
+          );
+          
+          if (enhanceResponse.ok) {
+            const enhanceData = await enhanceResponse.json();
+            if (enhanceData.enhancedPrompt) {
+              enhancedPrompt = enhanceData.enhancedPrompt;
+              console.log(`Prompt enhanced: ${enhancedPrompt}`);
+            }
+          }
+        } catch (enhanceError) {
+          console.error('Error enhancing prompt, will use original:', enhanceError);
+        }
+        
+        // Try to use the direct fetch approach for image generation
         console.log("Attempt direct API call to generate-images edge function");
         
         // Get the current session asynchronously (proper way)
@@ -39,7 +68,7 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
             },
             body: JSON.stringify({ 
               jobId, 
-              prompt,
+              prompt: enhancedPrompt, // Use the enhanced prompt
               sketch // Optional base64-encoded sketch
             })
           }
@@ -106,5 +135,54 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
   } catch (error) {
     console.error('Error generating images:', error);
     throw error;
+  }
+};
+
+/**
+ * Function to enhance a prompt using the enhance-prompt edge function
+ * @param prompt The prompt to enhance
+ * @returns The enhanced prompt
+ */
+export const enhancePrompt = async (prompt: string): Promise<string> => {
+  try {
+    console.log(`Enhancing prompt: ${prompt}`);
+    
+    // Get the current session asynchronously
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    
+    // Use the public anon key 
+    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w";
+    
+    const response = await fetch(
+      'https://pvtrmpaxhbvhvdiojqkd.supabase.co/functions/v1/enhance-prompt',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': apiKey
+        },
+        body: JSON.stringify({ prompt })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to enhance prompt: ${errorText}`);
+      return prompt; // Return original prompt if enhancement fails
+    }
+    
+    const data = await response.json();
+    
+    if (data.enhancedPrompt) {
+      console.log(`Enhanced prompt: ${data.enhancedPrompt}`);
+      return data.enhancedPrompt;
+    }
+    
+    return prompt; // Return original prompt if no enhanced version is returned
+  } catch (error) {
+    console.error('Error enhancing prompt:', error);
+    return prompt; // Return original prompt if enhancement fails
   }
 };

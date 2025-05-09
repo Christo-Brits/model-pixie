@@ -1,45 +1,93 @@
 
+# project_id must be the first field in the config.
 project_id = "pvtrmpaxhbvhvdiojqkd"
 
 [api]
 enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
 
-[auth]
-enabled = true
-port = 9999
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 15
+max_client_conn = 100
 
 [realtime]
+enabled = false
+
+[studio]
 enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = false
+port = 54324
 
 [storage]
 enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.external.github]
+enabled = false
+client_id = ""
+secret = ""
+redirect_uri = ""
+url = ""
+
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+redirect_uri = ""
+url = ""
 
 [analytics]
 enabled = false
+port = 54327
+vector_port = 54328
+backend = "postgres"
 
-[functions]
-[functions.use-refinement-credit]
+[experimental]
+shadow_database_prepare_owned = true
+
+[[functions]]
+name = "generate-images"
 verify_jwt = true
+system_vars = ["supabase_url", "supabase_service_role_key"]
 
-[functions.add-test-credits]
+[[functions]]
+name = "generate-model"
 verify_jwt = true
+system_vars = ["supabase_url", "supabase_service_role_key"]
 
-[functions.check-model-status]
-verify_jwt = false
+[[functions]]
+name = "check-model-status"
+verify_jwt = true
+system_vars = ["supabase_url", "supabase_service_role_key"]
 
-[functions.generate-model]
-verify_jwt = false
-
-[functions.generate-images]
-verify_jwt = false
-
-[functions.job-status]
-verify_jwt = false
-
-[functions.create-job]
-verify_jwt = false
+[[functions]]
+name = "enhance-prompt"
+verify_jwt = true
+system_vars = ["supabase_url", "supabase_service_role_key"]

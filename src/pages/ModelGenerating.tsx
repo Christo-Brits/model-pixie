@@ -12,7 +12,7 @@ const ModelGenerating = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [progress, setProgress] = useState(10);
-  const [statusMessage, setStatusMessage] = useState('Initializing model generation...');
+  const [statusMessage, setStatusMessage] = useState('Preparing your image for 3D modeling...');
   const [predictionId, setPredictionId] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -157,6 +157,10 @@ const ModelGenerating = () => {
   
   return (
     <>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center p-2 text-sm">
+        BETA FEATURE: Direct 3D model generation coming soon! Currently using downloadable image workflow.
+      </div>
+      
       {hasError && errorMessage ? (
         <GenerationError 
           error={errorMessage}
@@ -187,7 +191,7 @@ const ModelGenerating = () => {
       
       <ModelGenerationLoading 
         progress={progress} 
-        estimatedTime={progress < 80 ? "5-7 min" : "Almost done"}
+        estimatedTime={progress < 80 ? "Preparing image..." : "Almost done"}
         creditUsage={1}
         onCancel={handleCancel}
         statusMessage={statusMessage}
