@@ -216,16 +216,27 @@ export const checkModelGenerationStatus = async (jobId: string) => {
         // Try to get metadata in a separate query if needed
         let meshyTaskId = null;
         try {
-          const { data: metadataResult, error: metadataError } = await supabase
-            .from('jobs')
-            .select('metadata')
-            .eq('id', jobId)
-            .single();
-            
-          if (!metadataError && metadataResult && metadataResult.metadata) {
-            meshyTaskId = metadataResult.metadata.meshy_task_id;
+          // Fixed: First check if the metadata column exists before attempting to query it
+          const { data: columnCheckData, error: columnCheckError } = await supabase.rpc('check_column_exists', {
+            table_name: 'jobs',
+            column_name: 'metadata'
+          });
+          
+          const hasMetadataColumn = !columnCheckError && columnCheckData === true;
+          
+          if (hasMetadataColumn) {
+            // Only query metadata if the column exists
+            const { data: metadataResult, error: metadataError } = await supabase
+              .from('jobs')
+              .select('metadata')
+              .eq('id', jobId)
+              .single();
+              
+            if (!metadataError && metadataResult && metadataResult.metadata) {
+              meshyTaskId = metadataResult.metadata.meshy_task_id;
+            }
           } else {
-            console.log('Metadata column may not exist or is empty');
+            console.log('Metadata column does not exist in jobs table');
           }
         } catch (metadataError) {
           console.log('Error accessing metadata, continuing without it:', metadataError);
@@ -381,3 +392,4 @@ export const addTestCredits = async (userId: string, credits: number = 10) => {
     throw error;
   }
 };
+

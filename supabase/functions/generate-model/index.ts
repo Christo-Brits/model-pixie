@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 import { corsHeaders, getEdgeFunctionConfig } from "../_shared/config.ts";
 import { isValidURL } from "../_shared/validators.ts";
+import { columnExists } from "../_shared/database.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -141,12 +142,8 @@ serve(async (req) => {
         };
         
         // Check if the metadata column exists in the jobs table
-        const { error: columnCheckError } = await supabase.rpc('check_column_exists', {
-          table_name: 'jobs',
-          column_name: 'metadata'
-        }).select();
-        
-        const hasMetadataColumn = !columnCheckError;
+        const hasMetadataColumn = await columnExists(supabase, 'jobs', 'metadata');
+        console.log(`Metadata column exists: ${hasMetadataColumn}`);
         
         try {
           // Update the job with status and optional metadata

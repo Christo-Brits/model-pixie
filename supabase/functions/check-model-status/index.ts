@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 import { corsHeaders, getEdgeFunctionConfig } from "../_shared/config.ts";
+import { columnExists } from "../_shared/database.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -65,12 +66,9 @@ serve(async (req) => {
     }
     
     // Check if the jobs table has a metadata column
-    const { error: columnCheckError } = await supabase.rpc('check_column_exists', {
-      table_name: 'jobs',
-      column_name: 'metadata'
-    }).select();
+    const hasMetadataColumn = await columnExists(supabase, 'jobs', 'metadata');
+    console.log(`Metadata column exists: ${hasMetadataColumn}`);
     
-    const hasMetadataColumn = !columnCheckError;
     let meshyTaskId = null;
     
     // Only try to access metadata if the column exists
