@@ -28,16 +28,17 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
   const processingStartTimeRef = useRef<number | null>(null);
   const maxTimeoutRef = useRef<number | null>(null);
   const pollingCountRef = useRef<number>(0);
+  const consecutiveErrorsRef = useRef<number>(0);
   
   useEffect(() => {
-    // Setup max timeout to prevent infinite waiting
+    // Setup max timeout to prevent infinite waiting - reduce from 15 to 10 minutes
     if (!maxTimeoutRef.current) {
-      // Set max timeout to 15 minutes (900000ms)
+      // Set max timeout to 10 minutes (600000ms) to prevent excessive waiting
       maxTimeoutRef.current = window.setTimeout(() => {
-        console.warn('Maximum generation time exceeded (15 minutes)');
+        console.warn('Maximum generation time exceeded (10 minutes)');
         onError(new Error('Generation is taking too long. Please try again later.'));
         cleanupIntervals();
-      }, 900000);
+      }, 600000); // 10 minutes
     }
     
     // Don't poll if there's an error or no predictionId
@@ -83,6 +84,9 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
         // Check status using the prediction ID
         const status = await checkModelGenerationStatus(jobId);
         console.log("Model status check returned:", status);
+        
+        // Reset consecutive errors counter since this request succeeded
+        consecutiveErrorsRef.current = 0;
         
         if (status.status === 'processing' || status.status === 'starting' || status.status === 'rendering') {
           // Calculate how long we've been processing
@@ -141,11 +145,14 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
       } catch (error: any) {
         console.error('Error checking model status:', error);
         
-        // Don't stop polling on error, just log it
-        // But after too many consecutive errors, give up
-        if (pollingCountRef.current > 10) {
+        // Count consecutive errors
+        consecutiveErrorsRef.current += 1;
+        console.log(`Consecutive errors: ${consecutiveErrorsRef.current}`);
+        
+        // After 5 consecutive errors (not 10), consider it a failure
+        if (consecutiveErrorsRef.current >= 5) {
           cleanupIntervals();
-          onError(new Error('Too many errors while checking model status. Please try again.'));
+          onError(new Error('Connection issues while checking model status. Please try again.'));
         }
       }
     };
@@ -153,8 +160,8 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
     // Check status immediately
     checkModelStatus();
       
-    // Then poll every 10 seconds
-    pollingIntervalRef.current = window.setInterval(checkModelStatus, 10000);
+    // Then poll every 6 seconds (previously 10)
+    pollingIntervalRef.current = window.setInterval(checkModelStatus, 6000);
     
     // Setup visual progress indicator - only increment gradually for visual feedback
     visualProgressIntervalRef.current = window.setInterval(() => {
@@ -167,7 +174,7 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
         console.log(`Visual progress update: ${lastProgressRef.current}%`);
         onStatusUpdate('', lastProgressRef.current);
       }
-    }, 15000); // Slower visual updates (15s)
+    }, 12000); // Faster visual updates (12s instead of 15s)
     
     // Cleanup function
     return cleanupIntervals;

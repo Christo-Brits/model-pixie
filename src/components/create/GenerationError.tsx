@@ -1,19 +1,32 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GenerationErrorProps {
   error: string | null;
   details?: string | null;
   onRetry?: () => void;
+  onGoBack?: () => void;
 }
 
 export const GenerationError: React.FC<GenerationErrorProps> = ({ 
   error, 
   details,
-  onRetry 
+  onRetry,
+  onGoBack
 }) => {
   if (!error) return null;
+  
+  // Check if error is related to timeout or long processing
+  const isTimeoutError = error.toLowerCase().includes('taking too long') || 
+                         error.toLowerCase().includes('timeout') || 
+                         error.toLowerCase().includes('exceeded');
+  
+  // Check if error is related to server/connection issues
+  const isConnectionError = error.toLowerCase().includes('connection') || 
+                           error.toLowerCase().includes('network') ||
+                           error.toLowerCase().includes('failed to fetch');
   
   return (
     <div className="mb-6 p-4 border border-destructive/30 bg-destructive/10 rounded-lg flex items-start gap-3">
@@ -21,6 +34,20 @@ export const GenerationError: React.FC<GenerationErrorProps> = ({
       <div className="w-full">
         <p className="font-medium text-destructive">Generation Error</p>
         <p className="text-sm text-destructive/80">{error}</p>
+        
+        {isTimeoutError && (
+          <p className="mt-2 text-xs text-destructive/70">
+            3D model generation can take some time. Our service may be experiencing high demand.
+            Please try again or use a different image.
+          </p>
+        )}
+        
+        {isConnectionError && (
+          <p className="mt-2 text-xs text-destructive/70">
+            There might be an issue with your internet connection or our service.
+            Please check your connection and try again.
+          </p>
+        )}
         
         {details && (
           <details className="mt-2">
@@ -33,14 +60,26 @@ export const GenerationError: React.FC<GenerationErrorProps> = ({
           </details>
         )}
         
-        {onRetry && (
-          <button 
-            onClick={onRetry}
-            className="mt-3 text-sm px-3 py-1 bg-background rounded border border-destructive/20 text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            Try Again
-          </button>
-        )}
+        <div className="mt-3 flex gap-3">
+          {onRetry && (
+            <Button 
+              onClick={onRetry}
+              className="text-sm px-3 py-1 bg-background rounded border border-destructive/20 text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              Try Again
+            </Button>
+          )}
+          
+          {onGoBack && (
+            <Button 
+              onClick={onGoBack}
+              variant="outline" 
+              className="text-sm px-3 py-1"
+            >
+              Go Back
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -93,6 +93,23 @@ const ModelGenerating = () => {
       console.error('Error cancelling job:', error);
     }
   };
+
+  const handleRetry = () => {
+    // Reset state
+    setHasError(false);
+    setErrorMessage(null);
+    setPredictionId(null);
+    setProgress(10);
+    setStatusMessage('Restarting model generation...');
+    
+    // Force reload to restart the process
+    window.location.reload();
+  };
+  
+  const handleGoBack = () => {
+    // Go back to create page
+    navigate('/create');
+  };
   
   if (!jobId) {
     toast.error('Error', {
@@ -142,7 +159,8 @@ const ModelGenerating = () => {
         <GenerationError 
           error={errorMessage}
           details="The model generation process encountered an error. This could be due to server issues or problems with the input image."
-          onRetry={() => window.location.reload()}
+          onRetry={handleRetry}
+          onGoBack={handleGoBack}
         />
       )}
       
