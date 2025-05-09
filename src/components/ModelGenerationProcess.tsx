@@ -31,6 +31,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
       try {
         // Validate input
         if (!jobId) {
+          console.error('No job ID provided for model generation');
           throw new Error('Job ID is required for model generation');
         }
         
@@ -38,13 +39,49 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
         onStatusUpdate('Checking image availability...', 10);
         console.log(`ModelGenerationProcess - Selected Image URL: ${selectedImageUrl}`);
         
-        // If we don't have a selected image URL, try to get it from localStorage
-        const imageUrl = selectedImageUrl || localStorage.getItem('selectedImageUrl');
+        // If we don't have a selected image URL, try multiple fallback methods
+        let imageUrl = selectedImageUrl;
         
         if (!imageUrl) {
-          console.error('No image selected for model generation');
+          // Try localStorage
+          imageUrl = localStorage.getItem('selectedImageUrl');
+          console.log(`Retrieved image URL from localStorage: ${imageUrl}`);
+        }
+        
+        if (!imageUrl) {
+          // Try to get it from the job's image_url or primary variation
+          try {
+            const { data } = await supabase
+              .from('jobs')
+              .select('image_url, image_variations')
+              .eq('id', jobId)
+              .single();
+              
+            if (data?.image_url) {
+              imageUrl = data.image_url;
+              console.log(`Retrieved image URL from job data: ${imageUrl}`);
+            } else if (data?.image_variations && Array.isArray(data.image_variations) && data.image_variations.length > 0) {
+              // Find selected variation or use first one
+              const selectedVariation = data.image_variations.find(v => v.selected === true);
+              if (selectedVariation) {
+                imageUrl = selectedVariation.url;
+              } else {
+                imageUrl = data.image_variations[0].url;
+              }
+              console.log(`Retrieved image URL from job variations: ${imageUrl}`);
+            }
+          } catch (error) {
+            console.error('Error retrieving job data:', error);
+          }
+        }
+        
+        if (!imageUrl) {
+          console.error('No image selected for model generation after fallback attempts');
           throw new Error('No image selected for model generation. Please go back and select an image.');
         }
+        
+        // Store the selected image URL for potential recovery
+        localStorage.setItem('selectedImageUrl', imageUrl);
         
         setHasInitiated(true);
         
@@ -81,6 +118,9 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
               `Model generation in progress. Estimated time: ${result.job.estimatedTime || '5-7 minutes'}`,
               25
             );
+            
+            // Store predictionId in localStorage for potential recovery
+            localStorage.setItem('currentPredictionId', predictionId);
           } else {
             console.error('No prediction or task ID returned from model generation service');
             throw new Error('Failed to get tracking ID for model generation');
@@ -102,6 +142,8 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
               } 
             });
           }
+        } else {
+          throw new Error('Invalid response from model generation service');
         }
       } catch (error: any) {
         console.error('Failed to start model generation:', error);
@@ -122,6 +164,9 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
     // We only want to run this effect once when the component mounts
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Include supabase import
+  const { supabase } = require('@/integrations/supabase/client');
 
   return null; // This is a logic-only component
 };

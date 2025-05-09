@@ -26,18 +26,31 @@ serve(async (req) => {
   }
 
   try {
-    // Check if request method is GET
-    if (req.method !== 'GET') {
+    // Accept both POST and GET methods
+    if (req.method !== 'POST' && req.method !== 'GET') {
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
         { status: 405, headers: { ...getAllHeaders(req.headers.get('origin') || ''), 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse URL to get jobId parameter
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const jobId = pathParts[pathParts.length - 1];
+    let jobId;
+    
+    if (req.method === 'POST') {
+      // Parse request body for POST
+      const requestData = await req.json();
+      jobId = requestData.jobId;
+    } else {
+      // Parse URL to get jobId parameter for GET
+      const url = new URL(req.url);
+      const pathParts = url.pathname.split('/');
+      jobId = pathParts[pathParts.length - 1];
+      
+      // Also check query parameters if not in path
+      if (!jobId) {
+        jobId = url.searchParams.get('jobId');
+      }
+    }
     
     // Validate jobId format (basic UUID validation)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,7 +70,7 @@ serve(async (req) => {
     // Query job status - optimized to select only needed fields
     const { data: jobData, error: dbError } = await supabaseClient
       .from('jobs')
-      .select('status, image_url, model_url, iterations')
+      .select('status, image_url, model_url, iterations, image_variations')
       .eq('id', jobId)
       .single();
 
@@ -91,7 +104,8 @@ serve(async (req) => {
         status: jobData.status || 'unknown',
         imageUrl: jobData.image_url,
         modelUrl: jobData.model_url,
-        iterations: jobData.iterations || 0
+        iterations: jobData.iterations || 0,
+        imageVariations: jobData.image_variations
       }),
       { 
         status: 200, 

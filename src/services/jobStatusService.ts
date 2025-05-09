@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Function to check job status
@@ -6,12 +7,12 @@ export const checkJobStatus = async (jobId: string) => {
     console.log(`Checking job status for job: ${jobId}`);
     
     try {
-      // Try to use the Edge Function for job status
+      // Try to use the Edge Function for job status - with proper HTTP method (POST)
       const { data, error } = await supabase.functions.invoke(
         'job-status',
         {
-          method: 'GET',
-          body: { jobId },
+          method: 'POST', // Changed from GET to POST
+          body: { jobId }
         }
       );
 
