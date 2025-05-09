@@ -54,9 +54,8 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
             if (result.job.status === 'completed' && result.job.modelUrl) {
               onStatusUpdate('Model generation complete!', 100);
               
-              toast({
-                title: 'Model generated successfully!',
-                description: 'Your 3D model is ready to preview.',
+              toast('Model generated successfully!', {
+                description: 'Your 3D model is ready to preview.'
               });
               
               navigate('/preview', { 
