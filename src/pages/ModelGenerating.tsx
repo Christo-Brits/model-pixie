@@ -8,7 +8,7 @@ import { ModelGenerationLoading } from '@/components/ModelGenerationLoading';
 import { ModelGenerationProcess } from '@/components/ModelGenerationProcess';
 import { Button } from '@/components/ui/button';
 import { checkJobStatus } from '@/services/jobStatusService';
-import { generatedModel } from '@/services/modelGenerationService'; // Import a helper function that may exist
+import { generateModel } from '@/services/modelGenerationService'; // Fixed import name
 import { GenerationError } from '@/components/create/GenerationError';
 import { useAuth } from '@/hooks/useAuth';
 
