@@ -10,6 +10,9 @@ export interface StepsProps extends React.HTMLAttributes<HTMLDivElement> {
 export interface StepProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   title: string;
+  stepNumber?: number;
+  isLast?: boolean;
+  vertical?: boolean;
 }
 
 export const Steps = React.forwardRef<HTMLDivElement, StepsProps>(
@@ -44,7 +47,7 @@ export const Steps = React.forwardRef<HTMLDivElement, StepsProps>(
 
 Steps.displayName = "Steps";
 
-export const Step = React.forwardRef<HTMLDivElement, StepProps & { stepNumber?: number; isLast?: boolean; vertical?: boolean }>(
+export const Step = React.forwardRef<HTMLDivElement, StepProps>(
   ({ className, title, children, stepNumber, isLast, vertical = false, ...props }, ref) => {
     return (
       <div

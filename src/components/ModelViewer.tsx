@@ -2,11 +2,12 @@
 import React from 'react';
 
 interface ModelViewerProps {
-  modelType: string;
+  modelUrl?: string;
+  modelType?: string;
   className?: string;
 }
 
-export const ModelViewer = ({ modelType, className }: ModelViewerProps) => {
+export const ModelViewer = ({ modelUrl, modelType = "dragon", className }: ModelViewerProps) => {
   return (
     <div className={`relative w-full h-full ${className}`}>
       {/* Placeholder for 3D model - in a real app, this would use three.js or similar */}
@@ -44,7 +45,7 @@ export const ModelViewer = ({ modelType, className }: ModelViewerProps) => {
       
       {/* Overlay text to indicate this is a placeholder */}
       <div className="absolute bottom-3 left-3 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded backdrop-blur-sm">
-        Interactive 3D Model
+        Interactive 3D Model {modelUrl ? '(URL: ' + modelUrl.substring(0, 15) + '...)' : ''}
       </div>
     </div>
   );

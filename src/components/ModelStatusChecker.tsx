@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -63,17 +64,19 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
       // We would normally provide a download button in the UI
       // For simplicity we're triggering this automatically after a short delay
       // In a real app, you might want to have this as a button in the UI instead
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         downloadImageForBlender();
       }, 3000);
       
-      return;
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
     
     // The rest of this effect is for future direct API integration
     // It will be skipped in our current workflow
     
-    let intervalId: number | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     
     if (predictionId && !hasError) {
       intervalId = setInterval(async () => {
@@ -93,7 +96,9 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
               description: 'Your 3D model is ready to preview.'
             });
             
-            clearInterval(intervalId!);
+            if (intervalId) {
+              clearInterval(intervalId);
+            }
             
             navigate('/preview', { 
               state: { 
@@ -107,7 +112,9 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
             onStatusUpdate(`Model generation in progress. Estimated time remaining: ${status.estimatedTimeRemaining || '5-7 minutes'}`, -1);
           } else if (status.status === 'failed' || status.status === 'error') {
             console.error('Model generation failed:', status.error);
-            clearInterval(intervalId!);
+            if (intervalId) {
+              clearInterval(intervalId);
+            }
             onError(new Error(status.error || 'Model generation failed'));
           } else {
             console.log(`Model generation status: ${status.status}`);
@@ -115,7 +122,9 @@ export const ModelStatusChecker: React.FC<ModelStatusCheckerProps> = ({
           }
         } catch (error: any) {
           console.error('Error checking model generation status:', error);
-          clearInterval(intervalId!);
+          if (intervalId) {
+            clearInterval(intervalId);
+          }
           onError(error);
         }
       }, 15000);

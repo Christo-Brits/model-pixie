@@ -29,7 +29,7 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
                 'apikey': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2dHJtcGF4aGJ2aHZkaW9qcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMjk2NTksImV4cCI6MjA2MTkwNTY1OX0.TpnUr4VDUWVRNEQNLHMp5nkeRBLRSsTjWpvWKHZNG8w"
               },
               body: JSON.stringify({ prompt })
