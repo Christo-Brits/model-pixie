@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { createJob } from '@/services/jobCreationService';
 import { generateImages, addTestCredits } from '@/services/generationService';
 import { useCredits } from '@/hooks/useCredits';
+import { useModelGenerationStore } from '@/stores/modelGenerationStore';
 
 // Import the extracted components
 import { InputModeToggle } from '@/components/create/InputModeToggle';
@@ -21,6 +23,7 @@ const Create = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { credits, refetchCredits } = useCredits();
+  const { getImageOptions } = useModelGenerationStore();
   const [inputMode, setInputMode] = useState<"text" | "sketch">("text");
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -64,8 +67,11 @@ const Create = () => {
       // Store jobId in localStorage
       localStorage.setItem('currentJobId', jobId);
       
-      // Generate images using the job ID
-      const generationData = await generateImages(jobId, prompt);
+      // Get image generation options from store
+      const imageOptions = getImageOptions();
+      
+      // Generate images using the job ID and options
+      const generationData = await generateImages(jobId, prompt, imageOptions);
       
       // Check if the generation was successful
       if (!generationData || generationData.error) {
@@ -133,6 +139,11 @@ const Create = () => {
       
       <main className="flex-1 px-4 py-6 max-w-xl mx-auto w-full">
         <h1 className="text-2xl font-bold mb-6">Create Your Model</h1>
+        
+        <div className="mb-2 px-3 py-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-md border border-blue-200 text-sm">
+          <p className="font-medium">🚀 Now with GPT-Image-1</p>
+          <p className="text-muted-foreground text-xs">Create higher quality images for your 3D models with advanced options</p>
+        </div>
         
         <InputModeToggle inputMode={inputMode} setInputMode={setInputMode} />
         

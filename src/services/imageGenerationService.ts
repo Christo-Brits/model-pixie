@@ -5,9 +5,19 @@ import { supabase } from '@/integrations/supabase/client';
  * Function to generate images from a prompt
  * @param jobId The ID of the job
  * @param prompt The prompt for generating images
+ * @param options Optional configuration for image generation
  * @param sketch Optional base64-encoded sketch
  */
-export const generateImages = async (jobId: string, prompt: string, sketch?: string) => {
+export const generateImages = async (
+  jobId: string, 
+  prompt: string, 
+  options?: {
+    quality?: 'low' | 'medium' | 'high',
+    background?: 'opaque' | 'transparent',
+    seed?: number
+  },
+  sketch?: string
+) => {
   try {
     console.log(`Generating images for job ${jobId} with prompt: ${prompt}`);
     
@@ -69,7 +79,10 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
             body: JSON.stringify({ 
               jobId, 
               prompt: enhancedPrompt, // Use the enhanced prompt
-              sketch // Optional base64-encoded sketch
+              sketch, // Optional base64-encoded sketch
+              quality: options?.quality || 'high', // Default to high quality
+              background: options?.background || 'opaque', // Default to opaque background
+              seed: options?.seed // Optional seed for reproducibility
             })
           }
         );
@@ -100,7 +113,10 @@ export const generateImages = async (jobId: string, prompt: string, sketch?: str
               body: { 
                 jobId, 
                 prompt,
-                sketch // Optional base64-encoded sketch
+                sketch, // Optional base64-encoded sketch
+                quality: options?.quality || 'high',
+                background: options?.background || 'opaque',
+                seed: options?.seed
               },
             }
           );

@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     // Parse the request body
-    const { prompt, jobId, userId, sketch } = await req.json();
+    const { prompt, jobId, userId, sketch, quality = "high", background = "opaque", seed } = await req.json();
     
     // Input validation
     if (!prompt) {
@@ -70,15 +70,24 @@ serve(async (req) => {
       console.log("Continuing with original prompt");
     }
     
-    // Prepare OpenAI API request using dall-e-3 model (GPT-4.1 vision is not actually available)
-    let openAIPayload = {
-      model: "dall-e-3", // DALL-E 3 is currently the best available model for this purpose
+    // Prepare OpenAI API request using gpt-image-1 model (new model)
+    let openAIPayload: any = {
+      model: "gpt-image-1", // Using the new GPT-Image-1 model
       prompt: enhancedPrompt,
-      n: 1,  // DALL-E 3 only supports 1 image per request
+      n: 1,  // GPT-Image-1 supports multiple images per request
       size: "1024x1024",
-      quality: "hd", // Use high quality
+      quality: quality, // New parameter: can be "low", "medium", or "high"
       response_format: "url"
     };
+    
+    // Add optional parameters if provided
+    if (background === "transparent") {
+      openAIPayload.background = "transparent";
+    }
+    
+    if (seed !== undefined) {
+      openAIPayload.seed = seed;
+    }
     
     // Log the API request
     console.log("Sending request to OpenAI with payload:", JSON.stringify(openAIPayload));
@@ -114,18 +123,31 @@ serve(async (req) => {
     console.log("Images generated successfully");
     
     // Make up to 3 more calls to get 4 variations total
+    // Each with slightly modified prompts to get different results
     const additionalImages = [];
+    const promptModifiers = [
+      "alternative perspective of ",
+      "different style of ",
+      "creative variation of "
+    ];
     
     for (let i = 0; i < 3; i++) {
       try {
         console.log(`Generating additional image ${i+1}...`);
+        
+        // Modify the prompt slightly for each variation
+        const modifiedPrompt = `${promptModifiers[i]}${enhancedPrompt}`;
+        
         const additionalResponse = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`
           },
-          body: JSON.stringify(openAIPayload)
+          body: JSON.stringify({
+            ...openAIPayload,
+            prompt: modifiedPrompt
+          })
         });
         
         if (additionalResponse.ok) {
@@ -189,7 +211,7 @@ serve(async (req) => {
         id: i + 1,
         url: publicUrl,
         selected: false,
-        prompt: enhancedPrompt // Store the enhanced prompt with each variation
+        prompt: i === 0 ? enhancedPrompt : `${promptModifiers[i-1]}${enhancedPrompt}` // Store the prompt with each variation
       });
     }
     

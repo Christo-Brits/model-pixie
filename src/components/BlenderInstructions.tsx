@@ -27,7 +27,7 @@ export const BlenderInstructions: React.FC<BlenderInstructionsProps> = ({ imageU
           </Step>
           
           <Step title="Load Your Image">
-            <p>In Blender, open the Meshy panel and click "Load Image". Select the image you downloaded from this app.</p>
+            <p>In Blender, open the Meshy panel and click "Load Image". Select the GPT-Image-1 generated image you downloaded from this app.</p>
           </Step>
           
           <Step title="Generate 3D Model">
@@ -40,12 +40,12 @@ export const BlenderInstructions: React.FC<BlenderInstructionsProps> = ({ imageU
         </Steps>
         
         <div className="mt-6">
-          <h4 className="font-medium text-lg mb-2">Your Generated Image</h4>
+          <h4 className="font-medium text-lg mb-2">Your GPT-Image-1 Generated Image</h4>
           <div className="border border-gray-200 rounded-md overflow-hidden">
-            <img src={imageUrl} alt="Generated concept for 3D model" className="w-full h-auto" />
+            <img src={imageUrl} alt="GPT-Image-1 generated concept for 3D model" className="w-full h-auto" />
           </div>
           <p className="text-sm text-gray-500 mt-2">
-            This high-quality image has been optimized for use with the Meshy Blender plugin.
+            This high-quality image has been generated with GPT-Image-1 and optimized for use with the Meshy Blender plugin.
           </p>
         </div>
         

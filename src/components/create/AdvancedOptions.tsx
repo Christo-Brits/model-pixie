@@ -1,36 +1,70 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { useModelGenerationStore } from '@/stores/modelGenerationStore';
 
-export const AdvancedOptions: React.FC = () => {
-  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+export const AdvancedOptions = () => {
+  const [expanded, setExpanded] = useState(false);
+  const { imageQuality, setImageQuality, useTransparentBackground, setUseTransparentBackground } = useModelGenerationStore();
   
   return (
-    <Collapsible open={isOptionsOpen} onOpenChange={setIsOptionsOpen} className="mb-6 border rounded-lg overflow-hidden">
-      <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Advanced Options</span>
+    <div className="mb-6">
+      <Button
+        variant="ghost"
+        className="flex w-full justify-between items-center text-muted-foreground py-2 px-0"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center">
+          <Sparkles className="h-4 w-4 mr-2" />
+          <span>Advanced Options</span>
         </div>
-        {isOptionsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="p-4 pt-0 border-t">
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Model Style</label>
-            <Input placeholder="Low-poly, Realistic, Cartoon..." />
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </Button>
+      
+      {expanded && (
+        <div className="p-4 bg-muted/30 rounded-md space-y-6 mt-2 backdrop-blur-sm">
+          <div className="space-y-2">
+            <Label>Image Quality</Label>
+            <RadioGroup 
+              value={imageQuality} 
+              onValueChange={(value) => setImageQuality(value as 'low' | 'medium' | 'high')}
+              className="flex flex-col space-y-1"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="low" id="low" />
+                <Label htmlFor="low" className="cursor-pointer">Low (Faster)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="medium" id="medium" />
+                <Label htmlFor="medium" className="cursor-pointer">Medium (Balanced)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="high" id="high" />
+                <Label htmlFor="high" className="cursor-pointer">High (Best Quality)</Label>
+              </div>
+            </RadioGroup>
           </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Dimensions</label>
-            <Input placeholder="Default" />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Format</label>
-            <Input placeholder=".OBJ" />
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="transparent-bg" className="cursor-pointer">Transparent Background</Label>
+              <Switch 
+                id="transparent-bg"
+                checked={useTransparentBackground}
+                onCheckedChange={setUseTransparentBackground}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Creates images with transparent backgrounds (useful for product mockups)
+            </p>
           </div>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      )}
+    </div>
   );
 };

@@ -31,7 +31,7 @@ serve(async (req) => {
       );
     }
 
-    // Call OpenAI API to enhance the prompt
+    // Call OpenAI API to enhance the prompt - using gpt-4o-mini for better prompt enhancement
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,19 +39,19 @@ serve(async (req) => {
         'Authorization': `Bearer ${openAIApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini", // Upgraded from gpt-3.5-turbo for better quality
         messages: [
           {
             role: "system",
-            content: "You are a 3D modeling prompt enhancer. Your job is to take basic prompts and enhance them to be detailed instructions for generating 3D-printable models. Focus on adding details about the pose, material properties, lighting, and ensure the description is suitable for 3D rendering. Keep the essence of the original prompt but make it more specific and detailed."
+            content: "You are a specialized prompt engineer for GPT-Image-1, OpenAI's advanced image generation model. Your job is to enhance basic prompts into detailed instructions for generating high-quality, 3D-printable model concepts. Focus on providing explicit details about the object's form, texture, lighting, perspective, and style that would work well for both GPT-Image-1 rendering and eventual 3D modeling. The enhanced prompt should preserve the core concept while adding specific visual characteristics that will result in consistent, detailed, and practical 3D model designs."
           },
           {
             role: "user",
-            content: `Enhance this prompt for 3D model generation: "${prompt}"`
+            content: `Enhance this prompt for GPT-Image-1 image generation (which will be used as reference for 3D modeling): "${prompt}"`
           }
         ],
         temperature: 0.7,
-        max_tokens: 300
+        max_tokens: 400 // Increased token limit for more detailed prompts
       })
     });
 
