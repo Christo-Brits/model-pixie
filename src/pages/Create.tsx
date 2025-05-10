@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
@@ -137,6 +138,11 @@ const Create = () => {
     handleGenerate();
   };
 
+  const handleGoBack = () => {
+    setGenerationError(null);
+    // Reset any form fields if needed
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-16">
       <TopBar />
@@ -160,6 +166,7 @@ const Create = () => {
         <ApiErrorAlert 
           errorMessage={generationError} 
           onRetry={handleRetry}
+          onGoBack={handleGoBack}
         />
         
         <AdvancedOptions />
