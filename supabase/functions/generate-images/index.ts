@@ -76,8 +76,8 @@ serve(async (req) => {
       prompt: enhancedPrompt,
       n: 1,  // GPT-Image-1 supports multiple images per request
       size: "1024x1024",
-      quality: quality, // New parameter: can be "low", "medium", or "high"
-      response_format: "url"
+      quality: quality // New parameter: can be "low", "medium", or "high"
+      // Removed: response_format parameter not supported by gpt-image-1
     };
     
     // Add optional parameters if provided

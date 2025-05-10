@@ -1,96 +1,42 @@
 
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
 
 interface GenerationErrorProps {
   error: string | null;
-  details?: string | null;
-  onRetry?: () => void;
-  onGoBack?: () => void;
 }
 
-export const GenerationError: React.FC<GenerationErrorProps> = ({ 
-  error, 
-  details,
-  onRetry,
-  onGoBack
-}) => {
+export const GenerationError: React.FC<GenerationErrorProps> = ({ error }) => {
   if (!error) return null;
   
-  // Check if error is related to timeout or long processing
-  const isTimeoutError = error.toLowerCase().includes('taking too long') || 
-                         error.toLowerCase().includes('timeout') || 
-                         error.toLowerCase().includes('exceeded');
+  // Check for specific API errors and provide more helpful messages
+  let displayMessage = error;
+  let detailMessage = '';
   
-  // Check if error is related to server/connection issues
-  const isConnectionError = error.toLowerCase().includes('connection') || 
-                           error.toLowerCase().includes('network') ||
-                           error.toLowerCase().includes('failed to fetch') ||
-                           error.toLowerCase().includes('edge function');
-  
-  // Check if error is related to missing image
-  const isImageError = error.toLowerCase().includes('no image') ||
-                      error.toLowerCase().includes('image not found') ||
-                      error.toLowerCase().includes('select an image');
-  
+  if (error.includes('response_format') || error.includes('unknown_parameter')) {
+    displayMessage = 'OpenAI API Configuration Error';
+    detailMessage = 'There is an issue with our API configuration. Our team has been notified and is working on a fix.';
+  } else if (error.includes('insufficient_quota')) {
+    displayMessage = 'API Usage Limit Reached';
+    detailMessage = 'Our image generation service has reached its usage limit. Please try again later.';
+  } else if (error.includes('network') || error.includes('internet') || error.includes('connection')) {
+    displayMessage = 'Network Connection Error';
+    detailMessage = 'Please check your internet connection and try again.';
+  }
+
   return (
-    <div className="mb-6 p-4 border border-destructive/30 bg-destructive/10 rounded-lg flex items-start gap-3">
-      <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-      <div className="w-full">
-        <p className="font-medium text-destructive">Generation Error</p>
-        <p className="text-sm text-destructive/80">{error}</p>
-        
-        {isTimeoutError && (
-          <p className="mt-2 text-xs text-destructive/70">
-            3D model generation can take some time. Our service may be experiencing high demand.
-            Please try again or use a different image.
+    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md text-red-700">
+      <div className="flex items-start">
+        <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0 text-red-500" />
+        <div>
+          <h4 className="font-medium text-red-700">{displayMessage}</h4>
+          <p className="mt-1 text-sm text-red-600">
+            {detailMessage || error}
           </p>
-        )}
-        
-        {isConnectionError && (
-          <p className="mt-2 text-xs text-destructive/70">
-            There might be an issue with your internet connection or our service.
-            Please check your connection and try again.
-          </p>
-        )}
-        
-        {isImageError && (
-          <p className="mt-2 text-xs text-destructive/70">
-            You need to select an image before generating a 3D model.
-            Please go back to image selection and choose an image.
-          </p>
-        )}
-        
-        {details && (
-          <details className="mt-2">
-            <summary className="text-xs text-destructive/70 cursor-pointer hover:text-destructive/90">
-              Technical details
-            </summary>
-            <pre className="mt-2 p-2 bg-background/50 rounded text-xs overflow-x-auto text-destructive/70 whitespace-pre-wrap">
-              {details}
-            </pre>
-          </details>
-        )}
-        
-        <div className="mt-3 flex gap-3">
-          {onRetry && (
-            <Button 
-              onClick={onRetry}
-              className="text-sm px-3 py-1 bg-background rounded border border-destructive/20 text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              Try Again
-            </Button>
-          )}
-          
-          {onGoBack && (
-            <Button 
-              onClick={onGoBack}
-              variant="outline" 
-              className="text-sm px-3 py-1"
-            >
-              Go Back
-            </Button>
+          {detailMessage && (
+            <p className="mt-2 text-xs text-red-500">
+              Error details: {error}
+            </p>
           )}
         </div>
       </div>

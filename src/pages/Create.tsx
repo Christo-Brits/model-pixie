@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
@@ -14,10 +13,10 @@ import { useModelGenerationStore } from '@/stores/modelGenerationStore';
 import { InputModeToggle } from '@/components/create/InputModeToggle';
 import { TextInputArea } from '@/components/create/TextInputArea';
 import { SketchInputArea } from '@/components/create/SketchInputArea';
-import { GenerationError } from '@/components/create/GenerationError';
 import { AdvancedOptions } from '@/components/create/AdvancedOptions';
 import { GenerateButton } from '@/components/create/GenerateButton';
 import { TestCreditsButton } from '@/components/create/TestCreditsButton';
+import { ApiErrorAlert } from '@/components/create/ApiErrorAlert';
 
 const Create = () => {
   const navigate = useNavigate();
@@ -133,6 +132,11 @@ const Create = () => {
     }
   };
 
+  const handleRetry = () => {
+    setGenerationError(null);
+    handleGenerate();
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-16">
       <TopBar />
@@ -153,7 +157,10 @@ const Create = () => {
           <SketchInputArea />
         )}
         
-        <GenerationError error={generationError} />
+        <ApiErrorAlert 
+          errorMessage={generationError} 
+          onRetry={handleRetry}
+        />
         
         <AdvancedOptions />
         
