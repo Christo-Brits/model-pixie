@@ -44,7 +44,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
         }
         
         // Update UI with initial status
-        onStatusUpdate('Checking image availability...', 10);
+        onStatusUpdate('Preparing your image for 3D modeling...', 10);
         console.log(`ModelGenerationProcess - Selected Image URL: ${selectedImageUrl}`);
         
         // If we don't have a selected image URL, try multiple fallback methods
@@ -102,8 +102,8 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
         
         setHasInitiated(true);
         
-        // Now, instead of calling the generate model function, we'll set up the download flow
-        onStatusUpdate('Preparing image for download...', 50);
+        // Prepare image with a helpful message about what to expect
+        onStatusUpdate('Optimizing image for 3D model generation with Meshy...', 50);
         
         // Short delay to allow UI to update
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -120,7 +120,7 @@ export const ModelGenerationProcess: React.FC<ModelGenerationProcessProps> = ({
         }
         
         onStatusUpdate(
-          'Image ready for use with Blender plugin. Click the download button to proceed.',
+          'Your image is ready for use with the Meshy Blender plugin! Download it now to create your 3D model.',
           90
         );
         

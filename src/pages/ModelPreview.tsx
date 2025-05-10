@@ -6,8 +6,9 @@ import { TopBar } from '@/components/TopBar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ModelViewer } from '@/components/ModelViewer';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, Home, Undo2 } from 'lucide-react';
+import { Download, Share2, Home, Undo2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { BlenderInstructions } from '@/components/BlenderInstructions';
+import { Card, CardContent } from '@/components/ui/card';
 
 const ModelPreview = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const ModelPreview = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [usingBlenderWorkflow, setUsingBlenderWorkflow] = useState(false);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
   
   // Extract state on component mount
   useEffect(() => {
@@ -25,11 +27,13 @@ const ModelPreview = () => {
     const locModelUrl = state?.modelUrl || localStorage.getItem('currentModelUrl');
     const locImageUrl = state?.imageUrl || localStorage.getItem('selectedImageUrl');
     const isBlenderWorkflow = state?.usingBlenderWorkflow || false;
+    const downloadComplete = state?.downloadComplete || false;
     
     setJobId(locJobId);
     setModelUrl(locModelUrl);
     setImageUrl(locImageUrl);
     setUsingBlenderWorkflow(isBlenderWorkflow);
+    setHasDownloaded(downloadComplete);
     
     // Store values in localStorage for persistence
     if (locJobId) localStorage.setItem('currentJobId', locJobId);
@@ -52,7 +56,10 @@ const ModelPreview = () => {
     link.click();
     document.body.removeChild(link);
     
-    toast.success('Image downloaded successfully');
+    setHasDownloaded(true);
+    toast.success('Image downloaded successfully', {
+      description: 'Use this image with the Meshy Blender plugin to create your 3D model.'
+    });
   };
   
   // Handle download model
@@ -112,7 +119,7 @@ const ModelPreview = () => {
       
       {usingBlenderWorkflow && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center p-2 text-sm">
-          BETA FEATURE: Direct 3D model generation coming soon!
+          <span className="font-bold">BETA FEATURE:</span> Direct 3D model generation coming soon!
         </div>
       )}
       
@@ -147,12 +154,44 @@ const ModelPreview = () => {
               </div>
             )}
             
+            <Card className="mb-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-full p-2 ${hasDownloaded ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {hasDownloaded ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <Download className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium">Step 1: Download Image</h3>
+                      <p className="text-sm text-muted-foreground">{hasDownloaded ? 'Image downloaded successfully!' : 'Download the image to use with Blender'}</p>
+                    </div>
+                    <Button 
+                      onClick={handleDownloadImage} 
+                      variant={hasDownloaded ? "outline" : "default"}
+                      className={hasDownloaded ? "border-green-300" : ""}
+                    >
+                      {hasDownloaded ? 'Download Again' : 'Download Image'}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full p-2 bg-purple-100 text-purple-600">
+                      <ArrowRight className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium">Step 2: Create 3D Model</h3>
+                      <p className="text-sm text-muted-foreground">Follow the instructions below to create your 3D model with Blender</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
             <div className="flex flex-wrap gap-3 mb-8">
-              <Button onClick={handleDownloadImage} className="flex-1 sm:flex-none">
-                <Download className="h-4 w-4 mr-2" />
-                Download Image
-              </Button>
-              
               <Button variant="outline" onClick={handleShare} className="flex-1 sm:flex-none">
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
